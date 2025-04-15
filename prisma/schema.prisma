@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Availability {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  priceid     String
+  stock       String
+  stripeid    String
+}
+
+model Femalechahouageckos {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Femalecrestedgeckos {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Femalegargoylegeckos {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Females {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Isopods {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Malechahouageckos {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Malecrestedgeckos {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Malegargoylegeckos {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Males {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Plants {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  stock       String
+}
+
+model Prints {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  description String
+  image1      String
+  image2      String
+  image3      String
+  image4      String
+  images      String[]
+  issale      String
+  name        String
+  oldprice    String
+  price       String
+  priceid     String?
+  stock       String
+  stripeid    String?
+}
