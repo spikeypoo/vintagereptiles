@@ -65,7 +65,7 @@ export default function Home() {
 
           Vintage Reptiles offers a 5 day health guarantee. This guarantee is only effective if the buyer sends proof of safe arrival within the first 30 minutes of receiving the gecko(s).
           <br/>If there is no communication from the buyer in the first 30 minutes the health guarantee is VOID.<br/>
-          The Health Guarantee is valid for DOA’s or sickness/death in the first 3 days after the gecko is received.<br/>
+          The Health Guarantee is valid for DOA’s or sickness/death in the first 5 days after the gecko is received.<br/>
           I am not responsible for any injuries in your care and a refund will not be issued.
           <br/>In the event of a death within the first 5 days where it is deemed the receiver is not at fault, a credit of the same value towards another gecko is available excluding the shipping cost.
           <br/>DOA’s caused by delayed shipping will not be credited as that is out of my control, I do my best to package the geckos properly to avoid shipping problems but unfortunately I cannot prevent what happens with the chosen shipping company.
