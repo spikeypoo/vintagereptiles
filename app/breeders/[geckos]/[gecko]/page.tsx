@@ -4,41 +4,45 @@ import Image from "next/image";
 import Link from "next/link";
 import "@/app/globals.css";
 import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, X, ShoppingCart } from "lucide-react";
+import { use } from 'react';
 
 export default function ListingDetails({ params }) {
   const [listingData, setData] = useState({});
   const [focused, setFocused] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setModalOpen] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0); // Which image is focused
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [itemID, setID] = useState();
   const [currPage, setPage] = useState();
+  const [addingToCart, setAddingToCart] = useState(false);
 
-  // ---- NEW: color options + selected color state
+  const { gecko } = use(params);
+  const items = gecko.split("-");
+  const id = items[1];
+  const page = items[0];
+
+  // Color options + selected color state
   const colorOptions = ["White", "Grey", "Black", "Brown", "Teal (Matte)", "Magenta", "Pink", "Rattan Purple", "Ice Blue", "Milk Green", "Red", "Green", "Blue", "Yellow", "Silk Blue Purple", "Silk Red Green", "Silk Galaxy Blue", "Silk Galaxy Purple", "Silk Mint", "Silk Purple", "Silk Gold", "Silk Silver"];
-  const [selectedColor, setSelectedColor] = useState("");  
+  const [selectedColor, setSelectedColor] = useState("");
 
-  // 1) Load data from backend
   useEffect(() => {
     const fetchData = async () => {
       const body = new FormData();
-      let items = params.gecko.split("-");
-      body.append("id", items[1]);
-      body.append("sitePage", items[0]);
-      setID(items[1]);
-      setPage(items[0]);
-
+      body.append("id", id);
+      body.append("sitePage", page);
+      setID(id);
+      setPage(page);
+  
       const result = await fetch("/api/forsale/getlisting", {
         method: "POST",
         body,
         cache: "force-cache",
       });
+  
       const dat = await result.json();
-
-      // "images" should be an array from the backend
       setData(dat);
-
-      // If there's at least one image, set the first as focused
+  
       if (Array.isArray(dat.images) && dat.images.length > 0) {
         const first = dat.images[0].replace(
           "vintage-reptiles-storage.s3.us-east-2.amazonaws.com/",
@@ -46,33 +50,22 @@ export default function ListingDetails({ params }) {
         );
         setFocused(first);
       }
+  
       setLoading(false);
     };
-
+  
     fetchData();
-  }, [params.gecko]);
+  }, [id, page]);
+  
 
-  // 2) Build array of images (filter out empty if needed)
+  // Build array of images (filter out empty if needed)
   const images = Array.isArray(listingData.images)
     ? listingData.images.filter((img) => img !== "")
     : [];
 
-  // Utility to highlight the focused thumbnail
-  const getBorderStyle = (imageUrl) => {
-    return imageUrl === focused
-      ? "outline outline-4 outline-white scale-105 brightness-50"
-      : "outline outline-4 outline-white";
-  };
-
-  // 3) Add to Cart
+  // Add to Cart
   const handleAdd = () => {
-    const btn = document.getElementById("addbutton");
-    if (btn) {
-      btn.innerHTML = "Adding...";
-      btn.classList.add("brightness-50");
-      btn.classList.remove("hover:brightness-75");
-      btn.classList.remove("cursor-pointer");
-    }
+    setAddingToCart(true);
 
     let current = localStorage.getItem("Cart");
     if (current == null) {
@@ -85,29 +78,22 @@ export default function ListingDetails({ params }) {
 
     if (listingID in cartObj) {
       // Already in cart, just increment quantity
-      if (currPage != "prints")
-      {
+      if (currPage != "prints") {
         cartObj[listingID].quantity += 1;
-      }
-      else
-      {
+      } else {
         cartObj[listingID].quantity += 1;
 
-        if (selectedColor in cartObj[listingID].chosenColors)
-        {
-          cartObj[listingID].chosenColors[selectedColor] += 1
-        }
-        else
-        {
-          cartObj[listingID].chosenColors[selectedColor] = 1
+        if (selectedColor in cartObj[listingID].chosenColors) {
+          cartObj[listingID].chosenColors[selectedColor] += 1;
+        } else {
+          cartObj[listingID].chosenColors[selectedColor] = 1;
         }
       }
     } else {
       // If there's at least one image, pick the first for cart preview
       const mainImage = images.length > 0 ? images[0] : "";
 
-      if (currPage != "prints")
-      {
+      if (currPage != "prints") {
         cartObj[listingID] = {
           name: listingData.name,
           price: listingData.price,
@@ -117,9 +103,7 @@ export default function ListingDetails({ params }) {
           currpage: currPage,
           id: itemID,
         };
-      }
-      else
-      {
+      } else {
         cartObj[listingID] = {
           name: listingData.name,
           price: listingData.price,
@@ -135,10 +119,14 @@ export default function ListingDetails({ params }) {
     }
 
     localStorage.setItem("Cart", JSON.stringify(cartObj));
-    location.reload();
+    
+    setTimeout(() => {
+      setAddingToCart(false);
+      location.reload();
+    }, 600);
   };
 
-  // 4) Modal (lightbox) logic
+  // Modal (lightbox) logic
   const openModal = (index) => {
     setCurrentIndex(index);
     setModalOpen(true);
@@ -174,193 +162,187 @@ export default function ListingDetails({ params }) {
     setFocused(newUrl);
   };
 
-  // 5) Handle loading skeleton
+  // Loading skeleton
   if (loading) {
     return (
-      <div>
-        <div className="flex relative md:h-screen md:max-h-[1000px] justify-center md:pt-[100px] md:mb-0">
-          <div className="flex justify-center md:scale-110">
-            {/* Loading Skeleton */}
-            <div className="absolute top-[-10px] md:static md:flex md:scale-90 scale-[80%] md:mt-0 md:pt-0 md:pb-0">
-              <div className="md:scale-110 scale-90">
-                <div className="relative w-[400px] h-[400px]">
-                  <div className="table m-auto md:m-0 transition ease-in-out w-[400px] h-[400px] outline outline-4 outline-[#202020] bg-[#2c2c2c] rounded-xl drop-shadow-xl duration-200 md:mr-[100px] md:ml-[100px] animate-pulse"></div>
-                </div>
-                <div className="flex pt-[20px] md:mr-[100px] md:ml-[100px] space-x-5 w-[400px] justify-center">
-                  <div className="transition h-[80px] w-[80px] ease-in-out rounded-md drop-shadow-xl outline-[#202020] bg-[#2c2c2c] animate-pulse"></div>
-                  <div className="transition h-[80px] w-[80px] ease-in-out rounded-md drop-shadow-xl outline-[#202020] bg-[#2c2c2c] animate-pulse"></div>
-                  <div className="transition h-[80px] w-[80px] ease-in-out rounded-md drop-shadow-xl outline-[#2c2c2c] bg-[#2c2c2c] animate-pulse"></div>
-                  <div className="transition h-[80px] w-[80px] ease-in-out rounded-md drop-shadow-xl outline-[#2c2c2c] bg-[#2c2c2c] animate-pulse"></div>
-                </div>
-              </div>
-              <div className="absolute md:static pr-[140px] md:pb-[80px]">
-                <div className="w-[125px] h-[40px] rounded-lg bg-[#2c2c2c] animate-pulse"></div>
-                <br />
-                <p className="w-[330px] h-[40px] rounded-lg bg-[#2c2c2c] animate-pulse"></p>
-                <br />
-                <p className="w-[350px] h-[120px] rounded-lg bg-[#2c2c2c] animate-pulse" />
-                <br />
-                <br />
-              </div>
+      <div className="max-w-7xl mx-auto px-4 py-8 md:px-8">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Left column skeleton (image) */}
+          <div className="w-full md:w-1/2">
+            <div className="bg-[#2c2c2c] rounded-xl h-96 animate-pulse mb-6"></div>
+            <div className="flex gap-4 justify-center">
+              {[1, 2, 3, 4].map((_, i) => (
+                <div key={i} className="w-20 h-20 bg-[#2c2c2c] rounded-lg animate-pulse"></div>
+              ))}
             </div>
+          </div>
+          
+          {/* Right column skeleton (details) */}
+          <div className="w-full md:w-1/2">
+            <div className="h-10 w-32 bg-[#2c2c2c] animate-pulse mb-4"></div>
+            <div className="h-8 w-48 bg-[#2c2c2c] animate-pulse mb-6"></div>
+            <div className="h-1 bg-[#3a3839] mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-6 bg-[#2c2c2c] animate-pulse w-full"></div>
+              <div className="h-6 bg-[#2c2c2c] animate-pulse w-full"></div>
+              <div className="h-6 bg-[#2c2c2c] animate-pulse w-3/4"></div>
+            </div>
+            <div className="mt-8 h-12 w-40 bg-[#2c2c2c] animate-pulse rounded-full"></div>
           </div>
         </div>
       </div>
     );
   }
 
-  // 6) Render final product page
+  // Format price with discount percentage if on sale
+  const calculateDiscount = () => {
+    if (listingData.issale === "true") {
+      const oldPrice = parseFloat(listingData.oldprice);
+      const newPrice = parseFloat(listingData.price);
+      const discount = Math.round(((oldPrice - newPrice) / oldPrice) * 100);
+      return discount;
+    }
+    return 0;
+  };
+
+  const isOutOfStock = parseInt(listingData.stock) <= 0;
+  const inStock = parseInt(listingData.stock) > 0;
+  const discount = calculateDiscount();
+
   return (
-    <div>
-      <div className="flex relative justify-center md:pt-[75px] md:mb-0">
-        <div className="flex justify-center md:scale-110 mb-[150px]">
-          <div className="absolute top-[-30px] md:static md:flex md:scale-90 scale-[80%]">
-            {/* LEFT COLUMN (images) */}
-            <div className="md:scale-110 scale-90">
-              {/* Focused (main) image */}
-              <div className="relative w-[400px] h-[400px]">
-                {focused ? (
+    <div className="max-w-7xl mx-auto px-4 py-8 md:px-8 mb-[100px]">
+      {/* Breadcrumb navigation */}
+      <nav className="flex items-center mb-8 text-sm">
+        <Link href={`/shop/${currPage}`} className="text-gray-400 hover:text-white transition">
+          {currPage && currPage.charAt(0).toUpperCase() + currPage.slice(1)}
+        </Link>
+        <ChevronRight size={16} className="mx-2 text-gray-400" />
+        <span className="text-white font-medium truncate max-w-xs">
+          {listingData.name}
+        </span>
+      </nav>
+
+      <div className="bg-[#242122] rounded-xl p-4 md:p-8 shadow-lg">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Left column (images) */}
+          <div className="w-full md:w-1/2">
+            {/* Main image */}
+            <div className="relative mb-6 aspect-square">
+              {focused ? (
+                <div className="relative h-full w-full rounded-lg overflow-hidden">
                   <img
                     src={focused}
-                    alt="Listing"
-                    width={400}
-                    height={400}
-                    className="table m-auto md:m-0 transition ease-in-out w-[400px] h-[400px] outline outline-4 outline-white rounded-xl drop-shadow-xl duration-200 md:mr-[100px] md:ml-[100px] cursor-zoom-in"
+                    alt={listingData.name}
+                    className="w-full h-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
                     onClick={() => openModal(currentIndex)}
                   />
-                ) : (
-                  <div className="w-[400px] h-[400px] bg-gray-600 flex items-center justify-center text-white text-xl">
-                    No image
-                  </div>
-                )}
-              </div>
+                  {/* Navigation arrows */}
+                  {images.length > 1 && (
+                    <>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          prevImage();
+                        }}
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-2 text-white hover:bg-opacity-70 transition-all"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          nextImage();
+                        }}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-2 text-white hover:bg-opacity-70 transition-all"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </>
+                  )}
+                  
+                  {/* Sale badge */}
+                  {listingData.issale === "true" && (
+                    <div className="absolute top-4 right-4 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-lg shadow-md">
+                      {discount}% OFF
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full h-full bg-gray-700 flex items-center justify-center text-white text-xl rounded-lg">
+                  No image available
+                </div>
+              )}
+            </div>
 
-              {/* Thumbnails Row (show max 4) */}
-              <div className="flex pt-[20px] md:mr-[100px] md:ml-[100px] space-x-5 w-[400px] justify-center">
-                {/* First 3 images */}
-                {images.slice(0, 3).map((imageUrl, index) => {
+            {/* Thumbnails */}
+            {images.length > 1 && (
+              <div className="flex gap-4 justify-center">
+                {images.slice(0, 5).map((imageUrl, index) => {
                   const thumbUrl = imageUrl.replace(
                     "vintage-reptiles-storage.s3.us-east-2.amazonaws.com/",
                     "d3ke37ygqgdiqe.cloudfront.net/"
                   );
+                  const isActive = thumbUrl === focused;
+                  
                   return (
-                    <img
+                    <div 
                       key={index}
-                      src={thumbUrl}
-                      width={80}
-                      height={80}
-                      alt="Thumbnail"
-                      className={`transition h-[80px] w-[80px] ease-in-out ${getBorderStyle(
-                        thumbUrl
-                      )} rounded-md drop-shadow-xl cursor-pointer hover:scale-105 hover:brightness-50 duration-200`}
+                      className={`relative h-20 w-20 rounded-lg overflow-hidden cursor-pointer
+                      ${isActive ? 'ring-2 ring-[#cb18db]' : 'ring-2 ring-transparent hover:ring-white'}
+                      ${index === 4 && images.length > 5 ? 'relative' : ''}`}
                       onClick={() => {
                         setCurrentIndex(index);
                         setFocused(thumbUrl);
                       }}
-                    />
-                  );
-                })}
-
-                {/* 4th slot (if there is a 4th image) */}
-                {images.length >= 4 && (() => {
-                  const fourthImageUrl = images[3].replace(
-                    "vintage-reptiles-storage.s3.us-east-2.amazonaws.com/",
-                    "d3ke37ygqgdiqe.cloudfront.net/"
-                  );
-
-                  return (
-                    <div
-                      key="fourth-img"
-                      className={`relative transition h-[80px] w-[80px] ease-in-out rounded-md drop-shadow-xl cursor-pointer hover:scale-105 hover:brightness-50 duration-200 ${getBorderStyle(
-                        fourthImageUrl
-                      )}`}
-                      onClick={() => {
-                        // If user clicks the 4th, focus that image & open modal
-                        setCurrentIndex(3);
-                        setFocused(fourthImageUrl);
-                      }}
                     >
                       <img
-                        src={fourthImageUrl}
-                        alt="Thumbnail"
-                        className="w-[80px] h-[80px] object-cover rounded-md"
+                        src={thumbUrl}
+                        alt={`Thumbnail ${index + 1}`}
+                        className={`w-full h-full object-cover transition-all duration-200
+                        ${isActive ? 'brightness-100' : 'brightness-75 hover:brightness-100'}`}
                       />
-                      {images.length > 4 && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md">
-                          <span className="text-white text-lg font-bold">
-                            +{images.length - 4}
-                          </span>
+                      {index === 4 && images.length > 5 && (
+                        <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+                          <span className="text-white font-bold">+{images.length - 5}</span>
                         </div>
                       )}
                     </div>
                   );
-                })()}
+                })}
               </div>
+            )}
+          </div>
+
+          {/* Right column (details) */}
+          <div className="w-full md:w-1/2 mt-6 md:mt-0">
+            {/* Title and price */}
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-white mb-4">{listingData.name}</h1>
             </div>
-
-            {/* RIGHT COLUMN (Details) */}
-            <div className="absolute md:static md:pr-[140px] md:pb-[80px] pb-[140px]">
-              {listingData.price !== "" &&
-                parseInt(listingData.stock) > 0 && (
-                  <div className="absolute right-[40px] top-[5px] text-white text-lg font-bold md:right-[150px]">
-                    Stock: {listingData.stock}
-                  </div>
-                )}
-
-              <div className="relative">
-                {listingData.issale === "true" && (
-                  <div className="absolute top-[50px] left-[315px] md:-top-[36px] md:left-[10px] scale-[150%] bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
-                    Sale!
-                  </div>
-                )}
-              </div>
-
-              {/* Price */}
-              {listingData.price !== "" && (
-                <p
-                  className={
-                    listingData.issale === "true"
-                      ? "text-red-500 text-3xl"
-                      : "text-white text-3xl"
-                  }
-                >
-                  ${parseFloat(listingData.price).toFixed(2)}
-                </p>
-              )}
-              {listingData.issale === "true" && (
-                <div className="line-through text-white text-3xl">
-                  ${parseFloat(listingData.oldprice).toFixed(2)}
-                </div>
-              )}
-              <br />
-
-              {/* Name */}
-              <p className="text-white align-top text-4xl font-bold md:w-[200px]">
-                {listingData.name}
-              </p>
-              <div className="w-full h-[1px] bg-white mt-[15px] mb-[15px]" />
-
-              {/* Description */}
-              <p
-                className="text-white align-top text-xl w-[400px] w-[300px]"
+            
+            <div className="h-px bg-[#3a3839] mb-6"></div>
+            
+            {/* Description */}
+            <div className="mb-8">
+              <div
+                className="text-gray-300 leading-relaxed"
                 dangerouslySetInnerHTML={{
-                  __html: listingData.description?.replace(
-                    /(\n)+/g,
-                    "<br />"
-                  ),
+                  __html: listingData.description?.replace(/(\n)+/g, "<br />"),
                 }}
               />
-              <br />
-
-              {/* NEW: 3D Print Color Dropdown */}
-              {currPage == "prints" && (<div className="mb-5">
-                <label className="block mb-2 text-white text-lg font-bold">
-                  Colour
+            </div>
+            
+            {/* Color selection for prints */}
+            {currPage == "prints" && (
+              <div className="mb-6">
+                <label className="block mb-2 text-white font-medium">
+                  Select Colour
                 </label>
                 <select
-                  className="bg-gray-700 text-white border border-gray-600 p-2.5 rounded"
+                  className="bg-[#1c1a1b] text-white border border-[#3a3839] p-2.5 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-[#cb18db] focus:border-transparent"
                   value={selectedColor}
                   onChange={(e) => setSelectedColor(e.target.value)}
+                  required={currPage === "prints"}
                 >
                   <option value="">Choose a colour</option>
                   {colorOptions.map((color) => (
@@ -369,69 +351,61 @@ export default function ListingDetails({ params }) {
                     </option>
                   ))}
                 </select>
-              </div>)}
-
-              <br />
-
-              {/* Add to cart button or out of stock */}
-              {listingData.price !== "" && parseInt(listingData.stock) > 0 && (
-                <div
-                  id="addbutton"
-                  className="font-bold text-white bg-[#9d00ff] w-[175px] h-[50px] flex items-center justify-center rounded-full text-lg outline outline-3 scale-[110%] cursor-pointer hover:brightness-75 drop-shadow-md"
-                  onClick={handleAdd}
-                >
-                  Add to cart
-                </div>
-              )}
-              {parseInt(listingData.stock) <= 0 && (
-                <div className="font-bold text-white bg-[#9d00ff] w-[175px] h-[50px] flex items-center justify-center rounded-full text-lg outline outline-3 scale-[110%] brightness-50 drop-shadow-md">
-                  Out of Stock!
-                </div>
-              )}
-            </div>
+                {currPage === "prints" && selectedColor === "" && (
+                  <p className="text-sm text-yellow-500 mt-1">
+                    Please select a colour before adding to cart
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* LIGHTBOX MODAL */}
-      {images.length > 0 && (
-        <div
-          className={`transition ease-in-out duration-0 fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 ${
-            isModalOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-        >
-          {/* Close Button */}
-          <button
-            className="absolute top-4 right-4 text-white text-4xl drop-shadow-lg"
-            onClick={closeModal}
-          >
-            ×
-          </button>
-
-          {/* Prev Button */}
-          <button
-            className="absolute left-4 text-white text-4xl drop-shadow-lg py-[250px]"
-            onClick={prevImage}
-          >
-            ←
-          </button>
-
-          {/* Focused Image */}
-          <img
-            src={focused}
-            alt="Expanded Image"
-            className={`absolute transition ease-in-out duration-200 max-w-full max-h-full ${
-              isModalOpen ? "opacity-100" : "opacity-0 translate-y-10"
-            }`}
-          />
-
-          {/* Next Button */}
-          <button
-            className="absolute right-4 text-white text-4xl drop-shadow-lg py-[250px]"
-            onClick={nextImage}
-          >
-            →
-          </button>
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Close button */}
+            <button
+              className="absolute top-4 right-4 text-white p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-all z-10"
+              onClick={closeModal}
+            >
+              <X size={24} />
+            </button>
+            
+            {/* Navigation */}
+            {images.length > 1 && (
+              <>
+                <button
+                  className="absolute left-4 text-white p-3 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-all z-10"
+                  onClick={prevImage}
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  className="absolute right-4 text-white p-3 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-all z-10"
+                  onClick={nextImage}
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </>
+            )}
+            
+            {/* Image */}
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <img
+                src={focused}
+                alt={listingData.name}
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+            
+            {/* Image counter */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 px-4 py-2 rounded-full text-white">
+              {currentIndex + 1} / {images.length}
+            </div>
+          </div>
         </div>
       )}
     </div>

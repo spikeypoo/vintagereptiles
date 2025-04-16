@@ -5,8 +5,10 @@ import Link from 'next/link';
 import '@/app/globals.css';
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Filter, Search } from 'lucide-react';
+import { use } from "react";
 
-export default function PageDetails({ params }) {
+export default function PageDetails({ params }: { params: Promise<{ pages: string }> }) {
+  const { pages } = use(params);
   const [cards, setCards] = useState([]);
   const [filteredCards, setFilteredCards] = useState([]);
   const [visibleCards, setVisibleCards] = useState(20);
@@ -26,7 +28,7 @@ export default function PageDetails({ params }) {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const result = await fetch('/api/forsale/' + params.pages, {cache: 'force-cache'});
+      const result = await fetch('/api/forsale/' + pages, {cache: 'force-cache'});
       const data = await result.json();
       setCards(data);
       setFilteredCards(data);
@@ -35,7 +37,7 @@ export default function PageDetails({ params }) {
     };
 
     fetchData();
-  }, [params.pages]);
+  }, [pages]);
 
   useEffect(() => {
     // Filter and sort cards based on current selections
@@ -167,7 +169,7 @@ export default function PageDetails({ params }) {
 
   return (
     <div className="px-4 py-8 md:px-8">
-      {params.pages === "prints" && (
+      {pages === "prints" && (
         <div className="text-center text-white text-xl font-bold">
           To see all 3D Print colours, <span className="text-[#cb18db] cursor-pointer underline underline-offset-2"><Link href={"/printcolours"}>click here</Link></span>
         </div>
@@ -264,7 +266,7 @@ export default function PageDetails({ params }) {
                         onChange={() => setShowInStock(!showInStock)}
                         className="form-checkbox h-4 w-4 text-[#cb18db] transition duration-150 ease-in-out"
                       />
-                      <span className="ml-2">In stock only</span>
+                      <span className="ml-2">In Stock Only</span>
                     </label>
                   </div>
                   
@@ -276,7 +278,7 @@ export default function PageDetails({ params }) {
                         onChange={() => setShowOnSale(!showOnSale)}
                         className="form-checkbox h-4 w-4 text-[#cb18db] transition duration-150 ease-in-out"
                       />
-                      <span className="ml-2">On sale</span>
+                      <span className="ml-2">On Sale</span>
                     </label>
                   </div>
                 </div>
@@ -305,6 +307,7 @@ export default function PageDetails({ params }) {
                 id={element.id}
                 params={params}
                 stock={element.stock}
+                pages={pages}
               />
             ))}
           </div>
@@ -343,9 +346,9 @@ export default function PageDetails({ params }) {
   );
 }
 
-const Card = ({ index, name, price, image1, issale, oldprice, id, params, stock }) => {
+const Card = ({ index, name, price, image1, issale, oldprice, id, params, stock, pages}) => {
   const [hovering, setHovering] = useState(false);
-  const toListing = "/shop/" + params.pages + "/" + params.pages + "-" + id;
+  const toListing = "/shop/" + pages + "/" + pages + "-" + id;
   const isOutOfStock = parseInt(stock) <= 0;
 
   return (
@@ -370,9 +373,9 @@ const Card = ({ index, name, price, image1, issale, oldprice, id, params, stock 
               
               {/* Badges */}
               <div className="absolute top-3 right-3 flex flex-col gap-2">
-                {issale === "true" && (
+              {issale === "true" && oldprice && price && (
                   <div className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-md">
-                    Sale!
+                    {`${Math.round(((parseFloat(oldprice) - parseFloat(price)) / parseFloat(oldprice)) * 100)}% OFF`}
                   </div>
                 )}
                 {isOutOfStock && (

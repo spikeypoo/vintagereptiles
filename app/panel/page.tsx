@@ -620,7 +620,26 @@ function ModalEdit({
   }
 
   function handleOldPrice(e) {
-    setEditData((prev) => ({ ...prev, oldprice: e.target.value }));
+    let input = e.target.value.trim();
+    setEditData((prev) => ({ ...prev, oldprice: input }));
+  }
+  
+  function handleEditPrice(e) {
+    let input = e.target.value.trim();
+  
+    // Regular number input
+    setEditData((prev) => ({ ...prev, price: input }));
+  }
+
+  function handleEditDiscountChange(e) {
+    const input = e.target.value.trim();
+    const percent = parseFloat(input);
+    const old = parseFloat(editData.oldprice);
+  
+    if (!isNaN(percent) && !isNaN(old)) {
+      const newPrice = (old * (1 - percent / 100)).toFixed(2);
+      setEditData((prev) => ({ ...prev, price: newPrice }));
+    }
   }
 
   // Add new images
@@ -763,7 +782,7 @@ function ModalEdit({
               type="text"
               name="price"
               value={editData.price}
-              onChange={handleChange}
+              onChange={handleEditPrice}
               className="w-full p-2 rounded bg-gray-700 border border-gray-600"
             />
           </div>
@@ -775,6 +794,7 @@ function ModalEdit({
           </div>
           {isSale && (
             <div>
+              <input className="w-full p-2 rounded bg-gray-700 border border-gray-600 mb-[10px]" onChange={handleEditDiscountChange} placeholder="Discount %" />
               <label className="block mb-1 text-white">Old Price</label>
               <input
                 type="text"

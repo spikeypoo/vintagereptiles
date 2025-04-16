@@ -292,8 +292,9 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
         </div>
         
         <div className="col-span-2 text-white text-center">
-          ${price}.00
+          ${parseFloat(price).toFixed(2)}
         </div>
+
         
         <div className="col-span-2 flex justify-center">
           {hasColors ? (
@@ -316,8 +317,9 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
         </div>
         
         <div className="col-span-2 text-white text-right font-medium">
-          ${itemTotal}.00
+          ${parseFloat(itemTotal).toFixed(2)}
         </div>
+
       </div>
       
       {/* Mobile layout */}
@@ -334,7 +336,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
           </div>
           <div className="ml-3 flex-1">
             <div className="text-white font-medium mb-1">{name}</div>
-            <div className="text-white">${price}.00</div>
+            <div className="text-white">${parseFloat(price).toFixed(2)}</div>
           </div>
         </div>
         
@@ -361,8 +363,9 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
           </div>
           
           <div className="text-white font-medium">
-            Total: ${itemTotal}.00
+            Total: ${parseFloat(itemTotal).toFixed(2)}
           </div>
+
         </div>
         
         <button

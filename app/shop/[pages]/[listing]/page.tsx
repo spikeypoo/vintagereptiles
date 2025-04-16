@@ -5,6 +5,7 @@ import Link from "next/link";
 import "@/app/globals.css";
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, X, ShoppingCart } from "lucide-react";
+import { use } from 'react';
 
 export default function ListingDetails({ params }) {
   const [listingData, setData] = useState({});
@@ -16,30 +17,32 @@ export default function ListingDetails({ params }) {
   const [currPage, setPage] = useState();
   const [addingToCart, setAddingToCart] = useState(false);
 
+  const { listing } = use(params);
+  const items = listing.split("-");
+  const id = items[1];
+  const page = items[0];
+
   // Color options + selected color state
   const colorOptions = ["White", "Grey", "Black", "Brown", "Teal (Matte)", "Magenta", "Pink", "Rattan Purple", "Ice Blue", "Milk Green", "Red", "Green", "Blue", "Yellow", "Silk Blue Purple", "Silk Red Green", "Silk Galaxy Blue", "Silk Galaxy Purple", "Silk Mint", "Silk Purple", "Silk Gold", "Silk Silver"];
   const [selectedColor, setSelectedColor] = useState("");
 
-  // Load data from backend
   useEffect(() => {
     const fetchData = async () => {
       const body = new FormData();
-      let items = params.listing.split("-");
-      body.append("id", items[1]);
-      body.append("sitePage", items[0]);
-      setID(items[1]);
-      setPage(items[0]);
-
+      body.append("id", id);
+      body.append("sitePage", page);
+      setID(id);
+      setPage(page);
+  
       const result = await fetch("/api/forsale/getlisting", {
         method: "POST",
         body,
         cache: "force-cache",
       });
+  
       const dat = await result.json();
-
       setData(dat);
-
-      // If there's at least one image, set the first as focused
+  
       if (Array.isArray(dat.images) && dat.images.length > 0) {
         const first = dat.images[0].replace(
           "vintage-reptiles-storage.s3.us-east-2.amazonaws.com/",
@@ -47,11 +50,13 @@ export default function ListingDetails({ params }) {
         );
         setFocused(first);
       }
+  
       setLoading(false);
     };
-
+  
     fetchData();
-  }, [params.listing]);
+  }, [id, page]);
+  
 
   // Build array of images (filter out empty if needed)
   const images = Array.isArray(listingData.images)

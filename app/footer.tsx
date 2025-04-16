@@ -110,7 +110,7 @@ export default function Footer() {
               </a> */}
             </div>
             <div className="text-gray-400 text-sm space-y-2 text-center md:text-left">
-              <p>Email: contact@vintagereptiles.com</p>
+              <p>Email: shop@vintagereptiles.com</p>
               <p>Located in Ontario, Canada</p>
             </div>
           </div>

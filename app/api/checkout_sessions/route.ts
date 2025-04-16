@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
               currency: "cad",
             },
             display_name:
-              "Canada MERCHANDISE Shipping. You will be contacted for a quote if your purchase includes a reptile.",
+              "Canada MERCHANDISE Shipping. You will be contacted for a quote if your purchase includes a reptile",
             delivery_estimate: {
               minimum: { unit: "business_day", value: 1 },
               maximum: { unit: "business_day", value: 3 },
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
               currency: "cad",
             },
             display_name:
-              "Canada REPTILE Shipping. You will be contacted for a shipping quote.",
+              "Canada REPTILE Shipping. You will be contacted for a shipping quote",
             delivery_estimate: {
               minimum: { unit: "business_day", value: 1 },
               maximum: { unit: "business_day", value: 2 },
@@ -118,6 +118,16 @@ export async function POST(req: NextRequest, res: NextResponse) {
               currency: "cad",
             },
             display_name: "LOCAL PICKUP - Vaughan, Ontario",
+          },
+        },
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: {
+              amount: 0,
+              currency: "cad",
+            },
+            display_name: "Request a custom quote",
           },
         },
       ],
