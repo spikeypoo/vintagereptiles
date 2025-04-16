@@ -18,7 +18,7 @@ export default function Home() {
           Shipping within Canada only<br/><br/></div>
 
           <br/><div className="font-bold text-3xl text-[#cb18db]">Geckos</div>
-          <div className="italic font-bold pt-[10px]">Updated June 1st 2024<br/><br/></div>
+          <div className="italic font-bold pt-[10px]">Updated April 16th 2025<br/><br/></div>
           <div className="w-[100%] bg-white h-[1px]"></div><br/>
 
           When purchasing a gecko from Vintage Reptiles you are acknowledging that you have read, understood and agree to the TOS. The TOS is in place to protect potential buyers and myself. Vintage Reptiles reserves the right to refuse service to anyone.
@@ -83,7 +83,7 @@ export default function Home() {
 
           <br/><br/>
           <div className="font-bold text-3xl text-[#cb18db]">Plants</div>
-          <div className="italic font-bold pt-[10px]">Updated June 1st 2024<br/><br/></div>
+          <div className="italic font-bold pt-[10px]">Updated April 16th 2025<br/><br/></div>
           <div className="w-[100%] bg-white h-[1px]"></div><br/>
 
           <div className="font-bold text-2xl pb-[10px]">Deposit/Payment Options</div>
@@ -105,6 +105,27 @@ export default function Home() {
 
           I use beneficial bugs as a pest prevention (Swirskii Ulti-mite) which could still be on the plants when they leave my care.
           <br></br>I do not offer refunds, returns, replacements or exchanges unless something happens to the plant while still in my care.
+
+          <br/><br/><br/>
+          <div className="font-bold text-3xl text-[#cb18db]">3D Prints</div>
+          <div className="italic font-bold pt-[10px]">Updated April 16th 2025<br/><br/></div>
+          <div className="w-[100%] bg-white h-[1px]"></div><br/>
+
+          <div className="font-bold text-2xl pb-[10px]">General Information</div>
+
+          We offer a wide variety of colours mainly consisting of PLA filament. All products are made with Bambu Lab printers.
+
+          <br></br><br></br>
+
+          <div className="font-bold text-2xl pb-[10px]">Pickup/Shipping</div>
+
+          Pickups are welcome in Vaughan or occasionally at Reptile Expos. <br/>Shipping is available at the buyer's expense.<br/>You can request a quote or choose the fixed shipping option at checkout.
+          
+          <br></br><br></br>
+
+          <div className="font-bold text-2xl pb-[10px]">Important Note</div>
+
+          Please note that orders are custom made and manufacturing may need to be factored into shipping time.<br/>Due to the nature of 3D printing, items may include small cosmetic imperfections that do not impact the function of the item.
 
 
           <br></br><br></br><br></br>
