@@ -91,79 +91,92 @@ export default function CartDetails() {
   };
 
   return (
-    <div>
-      <br />
-      <br />
-      <div className="flex justify-center">
-        <div className="text-white text-4xl font-bold">Your Cart</div>
-        {cards.length > 0 && (
-          <div
-            id="products"
-            className="absolute max-w-[1000px] w-[100%] pb-[50px] pt-[80px]"
-          >
-            {cards.map(([id, data], index) => (
-              <CartCard
-                key={id}
-                cartKey={id}
-                index={index + 1}
-                name={data.name}
-                price={data.price}
-                quantity={data.quantity}
-                image={data.image?.replace(
-                  "vintage-reptiles-storage.s3.us-east-2.amazonaws.com/",
-                  "d3ke37ygqgdiqe.cloudfront.net/"
-                )}
-                colors={data.chosenColors}
-              />
-            ))}
+    <div className="min-h-[60vh] container mx-auto px-4 py-8 mb-[100px]">
+      <h1 className="text-white text-4xl font-bold text-center mb-8 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent">
+        Your Cart
+      </h1>
+      
+      {cards.length === 0 ? (
+        <div className="flex flex-col items-center justify-center mt-16">
+          <div className="text-white text-3xl mb-8">Your cart is empty!</div>
+          <Link href="/shop/availability">
+            <div className="bg-[#6d229b] text-white px-6 py-3 rounded-md font-bold 
+                        transition duration-200 hover:bg-[#55197a] cursor-pointer">
+              Continue Shopping
+            </div>
+          </Link>
+        </div>
+      ) : (
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-[#1a1718] rounded-lg shadow-lg border border-gray-800 overflow-hidden">
+            {/* Cart header */}
+            <div className="hidden md:grid md:grid-cols-12 bg-[#161414] text-gray-300 p-4 border-b border-gray-800">
+              <div className="col-span-6 font-semibold">Product</div>
+              <div className="col-span-2 font-semibold text-center">Price</div>
+              <div className="col-span-2 font-semibold text-center">Quantity</div>
+              <div className="col-span-2 font-semibold text-right">Total</div>
+            </div>
 
-            {cards.length > 0 && (
-              <div className="flex justify-center">
-                <div className="w-[90%] max-w-[1000px] h-[1px] bg-gray-400"></div>
-              </div>
-            )}
+            {/* Cart items */}
+            <div className="divide-y divide-gray-800">
+              {cards.map(([id, data], index) => (
+                <CartCard
+                  key={id}
+                  cartKey={id}
+                  index={index + 1}
+                  name={data.name}
+                  price={data.price}
+                  quantity={data.quantity}
+                  image={data.image?.replace(
+                    "vintage-reptiles-storage.s3.us-east-2.amazonaws.com/",
+                    "d3ke37ygqgdiqe.cloudfront.net/"
+                  )}
+                  colors={data.chosenColors}
+                />
+              ))}
+            </div>
+          </div>
 
-            {/* Subtotal / checkout */}
-            <div className="md:ml-auto md:w-[500px]">
-              <div className="flex justify-center text-white text-xl pt-[40px]">
-                Subtotal
-                <span className="pl-[30px] text-lg">
+          {/* Cart summary */}
+          <div className="mt-8 bg-[#1a1718] rounded-lg shadow-lg border border-gray-800 overflow-hidden">
+            <div className="p-6">
+              <div className="flex justify-between text-white mb-4">
+                <span className="text-xl">Subtotal</span>
+                <span className="text-xl font-semibold">
                   ${totalPrice.toFixed(2)} CAD
                 </span>
               </div>
-              <div className="flex justify-center text-white text-sm pt-[15px]">
+              
+              <div className="text-gray-400 text-sm mb-6">
                 Taxes and shipping are calculated during checkout
               </div>
-              <div
-                onClick={redirectToCheckout}
-                className="flex justify-center text-white text-md pt-[45px]"
-              >
-                <div className="w-[320px] bg-[#6d229b] text-center py-[10px] rounded-md font-bold transition ease-in-out duration-200 hover:bg-[#55197a] cursor-pointer">
-                  CHECK OUT
-                </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={redirectToCheckout}
+                  className="w-full bg-[#6d229b] text-white py-3 px-4 rounded-md font-bold 
+                           transition duration-200 hover:bg-[#55197a] cursor-pointer"
+                >
+                  CHECKOUT
+                </button>
+                <Link href="/" className="w-full">
+                  <button className="w-full border border-[#9d00ff] text-[#9d00ff] py-3 px-4 rounded-md
+                                  font-bold transition duration-200 hover:bg-[#9d00ff20] cursor-pointer">
+                    CONTINUE SHOPPING
+                  </button>
+                </Link>
               </div>
             </div>
           </div>
-        )}
-      </div>
-      {cards.length === 0 && (
-        <div className="flex justify-center text-white text-3xl pt-[40px]">
-          ...is empty!
         </div>
       )}
     </div>
   );
 }
 
-/**
- * CartCard representing a single cart item.
- * If it has chosenColors (i.e. it's a 3D print), we treat overall quantity 
- * as sum of sub-color quantities. 
- * Otherwise, user can directly edit item quantity.
- */
 function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
   const [itemPrice, setItemPrice] = useState(price);
-
+  
   // For a 3D print item, "colors" is presumably an object like { Red: 2, Blue: 1 }
   // If no "colors", it's a normal item => user can edit top-level quantity
   const hasColors =
@@ -203,7 +216,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
     const cObj = holder[cartKey]?.chosenColors || {};
     let sum = 0;
     for (const cQty of Object.values(cObj)) {
-      sum += cQty as number;
+      sum += cQty;
     }
     holder[cartKey].quantity = sum;
     localStorage.setItem("Cart", JSON.stringify(holder));
@@ -228,7 +241,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
     } else {
       let sum = 0;
       for (const val of Object.values(cObj)) {
-        sum += val as number;
+        sum += val;
       }
       holder[cartKey].quantity = sum;
     }
@@ -242,106 +255,166 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
     handleColorChange(colorName, 0);
   }
 
-  return (
-    <div>
-      <div className="flex justify-center">
-        <div className="w-[90%] max-w-[1000px] h-[1px] bg-gray-400"></div>
-      </div>
+  const itemTotal = price * quantity;
 
-      <div className="flex" id={`card-${index}`}>
-        <div className="flex mr-auto pl-[40px] pt-[25px] pb-[20px]">
-          <img
-            className="w-[70px] h-[70px] rounded-lg outline outline-white outline-3"
-            src={image}
-            alt="Cart item"
-          />
-          <div className="text-white text-md pl-[20px] max-w-[100px] mb-[10px]">
-            {name}
+  return (
+    <div className="group transition duration-150 hover:bg-[#22201f]" id={`card-${index}`}>
+      {/* Desktop layout */}
+      <div className="hidden md:grid md:grid-cols-12 p-4 items-center">
+        <div className="col-span-6">
+          <div className="flex items-center">
+            <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-white relative">
+              {image && (
+                <img
+                  src={image}
+                  alt={name}
+                  className="object-cover w-full h-full"
+                />
+              )}
+            </div>
+            <div className="ml-4">
+              <div className="text-white font-medium">{name}</div>
+              
+              {/* Delete button */}
+              <button
+                onClick={handleDelete}
+                className="text-[#9d00ff] text-sm font-semibold hover:text-[#cb18db] flex items-center mt-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                  <path d="M3 6h18"></path>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                </svg>
+                Remove
+              </button>
+            </div>
           </div>
         </div>
-
-        <div className="ml-auto">
-          <div className="pr-[40px] pt-[20px] text-white text-lg text-right">
-            ${itemPrice}.00
+        
+        <div className="col-span-2 text-white text-center">
+          ${price}.00
+        </div>
+        
+        <div className="col-span-2 flex justify-center">
+          {hasColors ? (
+            <input
+              type="number"
+              min={0}
+              value={quantity}
+              disabled
+              className="w-16 text-center bg-gray-700 text-white rounded border border-gray-600 py-1 opacity-50 cursor-not-allowed"
+            />
+          ) : (
+            <input
+              type="number" 
+              min={1}
+              defaultValue={quantity}
+              className="w-16 text-center bg-gray-800 text-white rounded border border-gray-700 py-1 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              onBlur={handleItemQuantityChange}
+            />
+          )}
+        </div>
+        
+        <div className="col-span-2 text-white text-right font-medium">
+          ${itemTotal}.00
+        </div>
+      </div>
+      
+      {/* Mobile layout */}
+      <div className="md:hidden p-4">
+        <div className="flex items-center">
+          <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-white">
+            {image && (
+              <img
+                src={image}
+                alt={name}
+                className="object-cover w-full h-full"
+              />
+            )}
           </div>
-
-          {/* If it's a normal item, user can edit quantity. 
-              If it's a 3D print (hasColors), quantity is read-only. */}
-          <div className="pr-[40px] pt-[15px] text-white text-sm">
-            Qty
+          <div className="ml-3 flex-1">
+            <div className="text-white font-medium mb-1">{name}</div>
+            <div className="text-white">${price}.00</div>
+          </div>
+        </div>
+        
+        <div className="mt-3 flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="text-gray-400 mr-2">Qty:</div>
             {hasColors ? (
-              // read-only derived quantity
               <input
                 type="number"
                 min={0}
                 value={quantity}
                 disabled
-                className="w-[60px] ml-[5px] rounded-sm text-black text-lg text-center opacity-50 cursor-not-allowed"
+                className="w-16 text-center bg-gray-700 text-white rounded border border-gray-600 py-1 opacity-50 cursor-not-allowed"
               />
             ) : (
-              // user can edit
               <input
                 type="number"
-                min={1}
+                min={1} 
                 defaultValue={quantity}
-                className="w-[60px] ml-[5px] rounded-sm text-black text-lg text-center"
+                className="w-16 text-center bg-gray-800 text-white rounded border border-gray-700 py-1 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 onBlur={handleItemQuantityChange}
               />
             )}
           </div>
+          
+          <div className="text-white font-medium">
+            Total: ${itemTotal}.00
+          </div>
         </div>
+        
+        <button
+          onClick={handleDelete}
+          className="mt-3 text-[#9d00ff] text-sm font-semibold hover:text-[#cb18db] flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+          Remove
+        </button>
       </div>
-
-      {/* If it's a 3D print => show sub-colors */}
-      {hasColors && (
-      <div className="ml-[50px] mb-2">
-        <div className="text-white font-bold text-md mb-1">Colors:</div>
-        {colorEntries.map(([colorName, colQty]) => (
-          <div
-            key={colorName}
-            className="flex items-center mb-1 w-[240px] justify-between"
-          >
-            {/* 
-              The color name on the left, truncated if very long 
-              so it won't push the right side away.
-            */}
-            <span className="text-white mr-2 max-w-[180px] overflow-hidden whitespace-nowrap text-ellipsis">
-              {colorName}:
-            </span>
-
-            {/* 
-              The quantity input + remove button on the right,
-              in their own small container. 
-            */}
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                step={1}
-                defaultValue={colQty}
-                className="w-[60px] rounded-sm text-black text-md text-center"
-                onBlur={(e) => handleColorChange(colorName, e.target.value)}
-              />
-              <button
-                className="bg-red-600 text-white rounded-md px-2 py-1 text-xs hover:bg-red-800 transition ease-in-out"
-                onClick={() => handleRemoveColor(colorName)}
-              >
-                Remove
-              </button>
+      
+      {/* 3D Print Colors Section - For both mobile and desktop */}
+      {hasColors && colorEntries.length > 0 && (
+        <div className="px-4 pb-4 -mt-1">
+          <div className="pl-4 md:pl-20 border-l-2 border-gray-700">
+            <div className="text-white font-medium text-sm mb-2">Color Options:</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg">
+              {colorEntries.map(([colorName, colQty]) => (
+                <div
+                  key={colorName}
+                  className="flex items-center justify-between p-2 bg-[#161414] rounded-md border border-gray-800"
+                >
+                  <span className="text-white text-sm max-w-[120px] overflow-hidden whitespace-nowrap text-ellipsis">
+                    {colorName}
+                  </span>
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      defaultValue={colQty}
+                      className="w-16 text-center bg-gray-800 text-white rounded border border-gray-700 py-1 text-sm"
+                      onBlur={(e) => handleColorChange(colorName, e.target.value)}
+                    />
+                    <button
+                      className="bg-red-900 text-white rounded-md px-2 py-1 text-xs hover:bg-red-800 transition ease-in-out"
+                      onClick={() => handleRemoveColor(colorName)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
-    )}
-
-
-      {/* Remove entire item */}
-      <div
-        className="text-[#9d00ff] font-bold underline underline-offset-[5px] ml-[50px] mb-[15px] w-[60px] h-[30px] cursor-pointer hover:text-[#6d229b]"
-        onClick={handleDelete}
-      >
-        Remove
-      </div>
+        </div>
+      )}
     </div>
   );
 }
