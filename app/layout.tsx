@@ -40,6 +40,7 @@ export default function RootLayout({
               <button className="transition ease-in-out group-hover:text-[#cb18db] group-hover:scale-95 duration-200">Pairings</button>
               <ul className="transition opacity-0 ease-in-out absolute block top-[-20%] group-hover:translate-y-[30px] group-hover:opacity-100 group-hover:pointer-events-auto group-hover:pt-4 duration-100 pointer-events-none scale-110 drop-shadow-xl">
                 <div className="divide-y bg-[#161414] outline-double outline-1 py-1 rounded-md">
+                  <li><Link href="/pairings2025"><button className="transition ease-in-out relative px-7 hover:text-[#cb18db] duration-200">2025</button></Link></li>
                   <li><Link href="/pairings2024"><button className="transition ease-in-out relative px-7 hover:text-[#cb18db] duration-200">2024</button></Link></li>
                   <li><Link href="/pairings2023"><button className="transition ease-in-out relative px-7 hover:text-[#cb18db] duration-200">2023</button></Link></li>
                   <li><Link href="/pairings2022"><button className="transition ease-in-out relative px-7 hover:text-[#cb18db] duration-200">2022</button></Link></li>

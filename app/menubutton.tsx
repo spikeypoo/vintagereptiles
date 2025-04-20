@@ -230,6 +230,23 @@ export default function MenuButton() {
             <div className="flex flex-col items-center justify-center">
               {/* 2024 (delay-0) */}
               <li>
+                <Link href="/pairings2025">
+                  <div
+                    onClick={toggleMenu}
+                    className={
+                      modalOpen
+                        ? "relative w-24 h-16 text-2xl flex items-center cursor-pointer opacity-100 hover:text-[#cb18db] transition ease-out duration-[100ms] text-white"
+                        : // in theory, we'd hide it if menu is closed, but if user closes the menu,
+                          // we also reset activeMenu to "main" anyway
+                          "opacity-0 pointer-events-none hidden"
+                    }
+                  >
+                    <div className=" text-center w-full">2025</div>
+                  </div>
+                </Link>
+              </li>
+              {/* 2024 (delay-0) */}
+              <li>
                 <Link href="/pairings2024">
                   <div
                     onClick={toggleMenu}
