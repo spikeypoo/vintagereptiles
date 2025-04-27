@@ -6,6 +6,8 @@ import "../globals.css";
 import { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import Resizer from "react-image-file-resizer";
+import { Switch } from '@/components/ui/switch';
+import { toast } from "sonner";
 
 // Helper to resize an image file client-side
 const resizeFile = (file) =>
@@ -65,43 +67,64 @@ export default function Home() {
 
   // Handle category clicks
   function handleCategoryClick(newRoute) {
-    setLoading(true); // show spinner
-    setRoute(newRoute); // triggers useEffect for fetch
+    // Only set loading and fetch data if the route is different
+    if (newRoute !== routeData) {
+      setLoading(true); // show spinner
+      setRoute(newRoute); // triggers useEffect for fetch
+    }
+  }
+
+  // Function to refresh items for the current category
+  async function refreshItems() {
+    try {
+      const result = await fetch(routeData);
+      const dat = await result.json();
+      console.log("Refreshed data:", dat);
+
+      const items = Array.isArray(dat) ? dat : [];
+
+      // 1) Render "Edit" cards
+      let cardsForEdit = items.map((element) => (
+        <CardEdit 
+          key={element.id} 
+          routeData={routeData} 
+          onItemUpdated={refreshItems} 
+          {...element} 
+        />
+      ));
+      let container = document.getElementById("edit2");
+      if (container) {
+        let to_inject = ReactDOM.createRoot(container);
+        to_inject.render(cardsForEdit);
+      }
+
+      // 2) Render "Remove" cards
+      let cardsForRemove = items.map((element) => (
+        <CardRemove 
+          key={element.id} 
+          routeData={routeData} 
+          onItemDeleted={refreshItems} 
+          {...element} 
+        />
+      ));
+      container = document.getElementById("remove2");
+      if (container) {
+        let to_inject = ReactDOM.createRoot(container);
+        to_inject.render(cardsForRemove);
+      }
+    } catch (err) {
+      console.error("Error refreshing items:", err);
+    }
   }
 
   // Load data from DB each time routeData changes
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const result = await fetch(routeData);
-        const dat = await result.json();
-        console.log("Loaded data:", dat);
-
-        const items = Array.isArray(dat) ? dat : [];
-
-        // 1) Render "Edit" cards
-        let cardsForEdit = items.map((element) => (
-          <CardEdit key={element.id} routeData={routeData} {...element} />
-        ));
-        let container = document.getElementById("edit2");
-        let to_inject = ReactDOM.createRoot(container);
-        to_inject.render(cardsForEdit);
-
-        // 2) Render "Remove" cards
-        let cardsForRemove = items.map((element) => (
-          <CardRemove key={element.id} routeData={routeData} {...element} />
-        ));
-        container = document.getElementById("remove2");
-        to_inject = ReactDOM.createRoot(container);
-        to_inject.render(cardsForRemove);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false); // hide spinner after fetch completes
-      }
+    if (routeData) {
+      setLoading(true);
+      refreshItems().finally(() => {
+        setLoading(false); // hide spinner after refresh completes
+      });
     }
-
-    fetchData();
   }, [routeData]);
 
   // Handle text changes in the "Add" form
@@ -112,9 +135,11 @@ export default function Home() {
 
   // Toggle sale
   function handleSaleChange() {
-    setSale(!isSale);
+    const newValue = !isSale;
+    console.log("Sale toggle changed to:", newValue);
+    setSale(newValue);
   }
-
+  
   // Old price input
   function handleSaleChange2(e) {
     setOldPrice(e.target.value);
@@ -187,7 +212,18 @@ export default function Home() {
 
     const resp = await fetch(routeData, { method: "POST", body: finalBody });
     console.log("Created new item. Resp:", resp);
-    alert("Item Uploaded!");
+
+     // Refresh the displayed items after successful add
+     if (resp.ok) {
+      refreshItems();
+      toast("Item Uploaded", {
+        description: "The new item has been added successfully.",
+      });
+    } else {
+      toast("Upload failed", {
+        description: "Failed to upload item. Please try again.",
+      });
+    }
 
     // Reset form
     setFormData({ name: "", description: "", price: "", stock: "" });
@@ -309,115 +345,164 @@ export default function Home() {
             </div>
 
             {/* ---------------- ADD PANEL ---------------- */}
+            {/* Replace the current ADD form with this improved version */}
             <div id="add">
-              <h2 className="text-xl font-bold mb-4">Add New Item</h2>
-              <form onSubmit={handleSubmit}>
-                {/* Name */}
-                <label className="block mb-2 text-white text-lg">Name</label>
-                <input
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 mb-4"
-                  type="text"
-                />
-
-                {/* Price */}
-                <label className="block mb-2 text-white text-lg">Price</label>
-                <input
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 mb-4"
-                  type="text"
-                />
-
-                {/* Sale toggle */}
-                <div className="flex items-center gap-2 mb-4">
-                  <label className="text-white text-lg">On Sale?</label>
-                  <input
-                    type="checkbox"
-                    className="rounded-lg"
-                    checked={isSale}
-                    onChange={handleSaleChange}
-                  />
-                </div>
-                {isSale && (
+              <h2 className="text-xl font-bold mb-4 flex items-center">
+                Add New Item
+              </h2>
+              
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                {/* Left column */}
+                <div>
+                  {/* Name */}
                   <div className="mb-4">
-                    <label className="block mb-2 text-white text-lg">
-                      Old Price
-                    </label>
+                    <label className="block mb-2 text-gray-300 text-sm">Name</label>
                     <input
-                      type="text"
-                      onChange={handleSaleChange2}
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
                       className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                      type="text"
+                      placeholder="Product name"
                     />
                   </div>
-                )}
-
-                {/* Stock */}
-                <label className="block mb-2 text-white text-lg">Stock</label>
-                <input
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleChange}
-                  className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 mb-4"
-                  type="text"
-                />
-
-                {/* Description */}
-                <label className="block mb-2 text-white text-lg">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  rows={4}
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 mb-4"
-                />
-
-                {/* MULTIPLE FILE INPUT (max 16) */}
-                <label className="block mb-2 text-white text-lg">
-                  Images (up to 16)
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFilesChange}
-                  className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 mb-4"
-                />
-
-                {/* Preview of selected images (with red "X" to remove) */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {files.map((file, idx) => {
-                    const preview = URL.createObjectURL(file);
-                    return (
-                      <div key={idx} className="relative">
-                        <img
-                          src={preview}
-                          alt="Preview"
-                          className="w-24 h-24 object-cover rounded-md border border-gray-600"
-                        />
-                        <button
-                          type="button"
-                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition ease-in-out hover:bg-red-900"
-                          onClick={() => handleRemoveFile(idx)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  })}
+                  
+                  {/* Price Section */}
+                  <div className="mb-4">
+                  <label className="block mb-2 text-gray-300 text-sm">Price</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-grow">
+                      <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                      <input
+                        name="price"
+                        value={formData.price}
+                        onChange={handleChange}
+                        className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 pl-7"
+                        type="text"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 bg-gray-700 rounded-md border border-gray-600 px-3">
+                      <label className="text-gray-300 text-sm whitespace-nowrap">On Sale</label>
+                      <Switch
+                        checked={isSale}
+                        onCheckedChange={setSale}
+                      />
+                    </div>
+                  </div>
                 </div>
-
-                <button
-                  type="submit"
-                  className="bg-gray-700 border border-gray-600 text-gray-200 px-6 py-2 rounded-lg hover:scale-105"
-                >
-                  Post
-                </button>
+                  
+                  {/* Old Price (only if on sale) */}
+                  {isSale && (
+                    <div className="mb-4">
+                      <label className="block mb-2 text-gray-300 text-sm">Original Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                        <input
+                          type="text"
+                          onChange={handleSaleChange2}
+                          className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 pl-7"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Stock */}
+                  <div className="mb-4">
+                    <label className="block mb-2 text-gray-300 text-sm">Stock</label>
+                    <input
+                      name="stock"
+                      value={formData.stock}
+                      onChange={handleChange}
+                      className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                      type="text"
+                      placeholder="Quantity available"
+                    />
+                  </div>
+                </div>
+                
+                {/* Right column */}
+                <div>
+                  {/* Description */}
+                  <div className="mb-4">
+                    <label className="block mb-2 text-gray-300 text-sm">Description</label>
+                    <textarea
+                      name="description"
+                      rows={5}
+                      value={formData.description}
+                      onChange={handleChange}
+                      className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                      placeholder="Product description..."
+                    />
+                  </div>
+                  
+                  {/* Images */}
+                  <div className="mb-4">
+                    <label className="block mb-2 text-gray-300 text-sm">Images (up to 16)</label>
+                    <div className="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-purple-500 transition duration-300">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleFilesChange}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label htmlFor="image-upload" className="cursor-pointer">
+                        <div className="flex flex-col items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                          <p className="text-gray-400">Drag & drop or click to upload</p>
+                          <p className="text-gray-500 text-xs">(JPG, PNG, WebP - max 5MB each)</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Image previews - full width */}
+                <div className="col-span-full">
+                  {files.length > 0 && (
+                    <div className="mt-2 mb-4">
+                      <p className="text-sm text-gray-400 mb-2">{files.length} image(s) selected</p>
+                      <div className="flex flex-wrap gap-2">
+                        {files.map((file, idx) => {
+                          const preview = URL.createObjectURL(file);
+                          return (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={preview}
+                                alt="Preview"
+                                className="w-20 h-20 object-cover rounded-md border border-gray-600 group-hover:opacity-75 transition"
+                              />
+                              <button
+                                type="button"
+                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                                onClick={() => handleRemoveFile(idx)}
+                              >
+                                ✕
+                              </button>
+                              <p className="text-xs text-gray-400 mt-1 truncate max-w-[80px]">{file.name}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Submit Button - full width */}
+                <div className="col-span-full mt-2">
+                  <button
+                    type="submit"
+                    className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-3 rounded-lg hover:scale-[1.02] transition duration-300 flex items-center justify-center w-full md:w-auto"
+                  >
+                    Add Product
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -467,48 +552,68 @@ function CardEdit(props) {
   }
 
   return (
-    <div className="mb-8">
+    <div className="bg-gray-800 rounded-xl overflow-hidden shadow-md w-[220px] transition-all hover:shadow-purple-900/20 hover:shadow-lg">
       <div className="relative text-center">
-        <p className="text-white text-lg mb-2 max-w-[200px]">{props.name}</p>
-        {Array.isArray(props.images) && props.images.length > 0 ? (
-          <img
-            src={props.images[0]}
-            alt="Preview"
-            width={200}
-            height={200}
-            className="outline outline-4 outline-white rounded-lg cursor-pointer transition hover:scale-105"
-            onClick={openModal}
-          />
-        ) : (
-          <div
-            className="w-[200px] h-[200px] bg-gray-600 flex items-center justify-center rounded-lg cursor-pointer"
-            onClick={openModal}
-          >
-            No Image
+        {/* Sale tag */}
+        {props.issale === "true" && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+            SALE
           </div>
         )}
+        
+        {/* Stock indicator */}
+        <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-full z-10 
+          ${parseInt(props.stock) > 5 
+            ? "bg-green-500/80 text-white" 
+            : parseInt(props.stock) > 0 
+              ? "bg-yellow-500/80 text-white" 
+              : "bg-red-500/80 text-white"}`
+        }>
+          {parseInt(props.stock) > 0 ? `${props.stock} in stock` : "Out of stock"}
+        </div>
+        
+        {/* Image with gradient overlay */}
+        <div className="relative h-[150px] cursor-pointer" onClick={openModal}>
+          {Array.isArray(props.images) && props.images.length > 0 ? (
+            <>
+              <img
+                src={props.images[0]}
+                alt={props.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-60"></div>
+            </>
+          ) : (
+            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+              <span className="text-gray-400">No Image</span>
+            </div>
+          )}
+        </div>
 
-        {/* Price */}
-        {props.price && props.price !== "" && (
-          <p
-            className={
-              props.issale === "true"
-                ? "text-red-500 text-lg pt-2"
-                : "text-white text-lg pt-2"
-            }
-          >
-            ${parseFloat(props.price).toFixed(2)}
-          </p>
-        )}
-        {/* If on sale, show old price */}
-        {props.issale === "true" && props.oldprice && (
-          <div className="line-through text-center text-white text-lg -mt-1">
-            ${parseFloat(props.oldprice).toFixed(2)}
+        {/* Product info */}
+        <div className="p-4 text-left">
+          <h3 className="font-medium text-white truncate" title={props.name}>{props.name}</h3>
+          
+          <div className="flex items-baseline mt-1">
+            {props.issale === "true" ? (
+              <>
+                <span className="text-red-400 font-bold">${parseFloat(props.price).toFixed(2)}</span>
+                <span className="ml-2 text-sm text-gray-400 line-through">${parseFloat(props.oldprice).toFixed(2)}</span>
+              </>
+            ) : (
+              <span className="text-white font-bold">${parseFloat(props.price).toFixed(2)}</span>
+            )}
           </div>
-        )}
+          
+          <button
+            onClick={openModal}
+            className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-1.5 text-sm transition"
+          >
+            Edit Item
+          </button>
+        </div>
       </div>
 
-      {/* Actual Modal */}
       {isModalOpen && (
         <ModalEdit
           {...props}
@@ -517,6 +622,7 @@ function CardEdit(props) {
             document.body.classList.remove("overflow-hidden");
           }}
           isClicked={isModalOpen}
+          onUpdate={props.onItemUpdated} // Pass the refresh callback to the modal
         />
       )}
     </div>
@@ -534,30 +640,79 @@ function CardRemove(props) {
     document.body.classList.add("overflow-hidden");
   }
 
+  // Calculate price display based on sale status
+  const priceDisplay = () => {
+    if (props.issale === "true") {
+      return (
+        <>
+          <span className="text-red-400 font-bold">${parseFloat(props.price).toFixed(2)}</span>
+          <span className="ml-2 text-sm text-gray-400 line-through">${parseFloat(props.oldprice).toFixed(2)}</span>
+        </>
+      );
+    } else {
+      return <span className="text-white font-bold">${parseFloat(props.price).toFixed(2)}</span>;
+    }
+  };
+
   return (
-    <div className="mb-8">
+    <div className="bg-gray-800 rounded-xl overflow-hidden shadow-md w-[220px] transition-all hover:shadow-red-900/30 hover:shadow-lg border border-transparent hover:border-red-900/30">
       <div className="relative text-center">
-        <p className="text-white text-lg mb-2 max-w-[200px]">{props.name}</p>
-        {Array.isArray(props.images) && props.images.length > 0 ? (
-          <img
-            src={props.images[0]}
-            alt="Preview"
-            width={200}
-            height={200}
-            className="outline outline-4 outline-white rounded-lg cursor-pointer transition hover:scale-105"
-            onClick={openModal}
-          />
-        ) : (
-          <div
-            className="w-[200px] h-[200px] bg-gray-600 flex items-center justify-center rounded-lg cursor-pointer"
-            onClick={openModal}
-          >
-            No Image
+        {/* Sale tag */}
+        {props.issale === "true" && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+            SALE
           </div>
         )}
+        
+        {/* Stock indicator */}
+        <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-full z-10 
+          ${parseInt(props.stock) > 5 
+            ? "bg-green-500/80 text-white" 
+            : parseInt(props.stock) > 0 
+              ? "bg-yellow-500/80 text-white" 
+              : "bg-red-500/80 text-white"}`
+        }>
+          {parseInt(props.stock) > 0 ? `${props.stock} in stock` : "Out of stock"}
+        </div>
+        
+        {/* Image with gradient overlay */}
+        <div className="relative h-[150px] cursor-pointer" onClick={openModal}>
+          {Array.isArray(props.images) && props.images.length > 0 ? (
+            <>
+              <img
+                src={props.images[0]}
+                alt={props.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-60"></div>
+            </>
+          ) : (
+            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+              <span className="text-gray-400">No Image</span>
+            </div>
+          )}
+        </div>
+
+        {/* Product info */}
+        <div className="p-4 text-left">
+          <h3 className="font-medium text-white truncate" title={props.name}>{props.name}</h3>
+          
+          <div className="flex items-baseline mt-1">
+            {priceDisplay()}
+          </div>
+          
+          <button
+            onClick={openModal}
+            className="mt-3 w-full bg-red-700 hover:bg-red-600 text-white rounded-lg py-1.5 text-sm transition flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Remove Item
+          </button>
+        </div>
       </div>
 
-      {/* Modal to confirm remove */}
       {isModalOpen && (
         <ModalRemove
           {...props}
@@ -566,6 +721,7 @@ function CardRemove(props) {
             document.body.classList.remove("overflow-hidden");
           }}
           isClicked={isModalOpen}
+          onItemDeleted={props.onItemDeleted}
         />
       )}
     </div>
@@ -587,6 +743,7 @@ function ModalEdit({
   stock,
   id,
   routeData,
+  onUpdate,
 }) {
   // We clone the existing images into state so we can remove them
   const [localImages, setLocalImages] = useState([...images]);
@@ -716,157 +873,227 @@ function ModalEdit({
 
     // 4) Send to DB route
     const resp = await fetch(routeData, { method: "PUT", body: finalBody });
-    console.log("Edit response:", resp);
-    alert("Item Edited!");
-    handleExit();
+    if (resp.ok) {
+      onUpdate();
+      toast("Item Edited", {
+        description: "Your changes have been saved successfully.",
+      });
+      handleExit();
+    } else {
+      toast("Edit failed", {
+        description: "Failed to edit item. Please try again.",
+      });
+    }
   }
 
   return (
     <div
       className={
         isClicked
-          ? "transition ease-in-out fixed inset-0 z-50 backdrop-blur-lg flex justify-center opacity-100 duration-150 overflow-y-auto"
+          ? "transition ease-in-out fixed inset-0 z-50 backdrop-blur-md bg-black/50 flex justify-center items-start opacity-100 duration-150 overflow-y-auto py-8"
           : "transition ease-in-out fixed inset-0 z-50 backdrop-blur-lg flex justify-center opacity-0 pointer-events-none duration-150"
       }
     >
-      <div className="relative w-[90%] max-w-[600px] bg-[#1c1a1b] rounded-3xl p-6 border border-[#111010] drop-shadow-xl h-fit mt-[50px]">
-        <button
-          onClick={handleExit}
-          className="absolute right-6 top-6 text-xl text-gray-400 hover:text-gray-200"
-        >
-          ✕
-        </button>
-        <div className="flex justify-center">
-          <h2 className="text-xl font-bold mb-4 text-center flex justify-center w-[200px]">
-            <div>Edit Item (ID: {id})</div>
-          </h2>
+      <div className="relative w-[90%] max-w-[800px] bg-gray-900 rounded-2xl p-8 border border-gray-800 shadow-xl h-fit">
+        {/* Header with close button */}
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-800">
+          <h2 className="text-2xl font-bold">Edit Product</h2>
+          <button
+            onClick={handleExit}
+            className="rounded-full bg-gray-800 p-2 text-gray-400 hover:text-white hover:bg-gray-700 transition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
 
-        {/* Show existing images with red "X" */}
-        {localImages && localImages.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4 justify-center">
-            {localImages.map((url, idx) => (
-              <div key={idx} className="relative">
-                <img
-                  src={url}
-                  alt="Current"
-                  className="w-24 h-24 object-cover border border-gray-600 rounded-md"
-                />
-                <button
-                  type="button"
-                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition ease-in-out hover:bg-red-900"
-                  onClick={() => removeExistingImage(idx)}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Product ID badge */}
+        <div className="inline-block mb-4 bg-gray-800 rounded-full px-3 py-1 text-xs text-gray-400">
+          Product ID: {id}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block mb-1 text-white">Name</label>
-            <input
-              type="text"
-              name="name"
-              value={editData.name}
-              onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600"
-            />
-          </div>
-
-          <div>
-            <label className="block mb-1 text-white">Price</label>
-            <input
-              type="text"
-              name="price"
-              value={editData.price}
-              onChange={handleEditPrice}
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600"
-            />
-          </div>
-
-          {/* Sale toggle */}
-          <div className="flex items-center gap-2">
-            <label>On Sale?</label>
-            <input type="checkbox" checked={isSale} onChange={handleSaleToggle} />
-          </div>
-          {isSale && (
+        {/* Main content in grid */}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left column - form fields */}
+          <div className="space-y-4">
             <div>
-              <input className="w-full p-2 rounded bg-gray-700 border border-gray-600 mb-[10px]" onChange={handleEditDiscountChange} placeholder="Discount %" />
-              <label className="block mb-1 text-white">Old Price</label>
+              <label className="block mb-1 text-sm text-gray-400">Product Name</label>
               <input
                 type="text"
-                value={editData.oldprice}
-                onChange={handleOldPrice}
-                className="w-full p-2 rounded bg-gray-700 border border-gray-600"
+                name="name"
+                value={editData.name}
+                onChange={handleChange}
+                className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               />
             </div>
-          )}
 
-          <div>
-            <label className="block mb-1 text-white">Stock</label>
-            <input
-              type="text"
-              name="stock"
-              value={editData.stock}
-              onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600"
-            />
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 text-sm text-gray-400">Price ($)</label>
+                <input
+                  type="text"
+                  name="price"
+                  value={editData.price}
+                  onChange={handleEditPrice}
+                  className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700"
+                />
+              </div>
+              
+              <div>
+                <label className="block mb-1 text-sm text-gray-400">Stock</label>
+                <input
+                  type="text"
+                  name="stock"
+                  value={editData.stock}
+                  onChange={handleChange}
+                  className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700"
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="block mb-1 text-white">Description</label>
-            <textarea
-              name="description"
-              rows={4}
-              value={editData.description}
-              onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600"
-            />
-          </div>
-
-          {/* Add new images (up to 16) */}
-          <div>
-            <label className="block mb-1 text-white">Add More Images</label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileChange}
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600"
-            />
-            {/* Preview new images with "X" */}
-            <div className="flex flex-wrap gap-2 mt-2">
-              {newFiles.map((file, idx) => {
-                const previewUrl = URL.createObjectURL(file);
-                return (
-                  <div key={idx} className="relative">
-                    <img
-                      src={previewUrl}
-                      alt="New"
-                      className="w-16 h-16 object-cover border border-gray-600 rounded-md"
+            {/* Sale toggle with slider */}
+            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-gray-300">Enable Sale Price</label>
+                <Switch
+                  checked={isSale}
+                  onCheckedChange={setIsSale}
+                />
+              </div>
+              
+              {isSale && (
+                <div className="mt-3 space-y-2">
+                  <div>
+                    <label className="block mb-1 text-xs text-gray-400">Discount %</label>
+                    <input
+                      className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-sm" 
+                      onChange={handleEditDiscountChange} 
+                      placeholder="Enter discount percentage"
                     />
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                      onClick={() => removeNewFile(idx)}
-                    >
-                      X
-                    </button>
                   </div>
-                );
-              })}
+                  <div>
+                    <label className="block mb-1 text-xs text-gray-400">Original Price ($)</label>
+                    <input
+                      type="text"
+                      value={editData.oldprice}
+                      onChange={handleOldPrice}
+                      className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm text-gray-400">Description</label>
+              <textarea
+                name="description"
+                rows={4}
+                value={editData.description}
+                onChange={handleChange}
+                className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700"
+              />
             </div>
           </div>
-
-          <button
-            type="submit"
-            className="block w-full mt-4 bg-gray-700 text-gray-200 px-4 py-2 rounded hover:scale-105"
-          >
-            Save Changes
-          </button>
+          
+          {/* Right column - images */}
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1 text-sm text-gray-400">Current Images</label>
+              <div className="border border-gray-700 rounded-lg p-3 bg-gray-800">
+                {localImages && localImages.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {localImages.map((url, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={url}
+                          alt="Current"
+                          className="w-full aspect-square object-cover rounded-md border border-gray-700 group-hover:opacity-75 transition"
+                        />
+                        <button
+                          type="button"
+                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                          onClick={() => removeExistingImage(idx)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">No images available</div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block mb-1 text-sm text-gray-400">Add More Images</label>
+              <div className="border-2 border-dashed border-gray-700 rounded-lg p-4 text-center hover:border-purple-500 transition cursor-pointer">
+                <input
+                  type="file"
+                  id="new-images"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <label htmlFor="new-images" className="cursor-pointer">
+                  <div className="flex flex-col items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-gray-400">Click to upload</p>
+                  </div>
+                </label>
+              </div>
+              
+              {/* Preview new images */}
+              {newFiles.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-400 mb-2">New images to upload:</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {newFiles.map((file, idx) => {
+                      const previewUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={previewUrl}
+                            alt="New"
+                            className="w-full aspect-square object-cover rounded-md border border-gray-700"
+                          />
+                          <button
+                            type="button"
+                            className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                            onClick={() => removeNewFile(idx)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Action buttons - full width */}
+          <div className="col-span-full flex gap-4 justify-end mt-4 pt-4 border-t border-gray-800">
+            <button
+              type="button"
+              onClick={handleExit}
+              className="px-6 py-2.5 rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-2.5 rounded-lg hover:scale-[1.02] transition shadow-lg"
+            >
+              Save Changes
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -876,44 +1103,135 @@ function ModalEdit({
 /* ------------------------------------------------------------------
    ModalRemove: Confirm item deletion
 ------------------------------------------------------------------ */
-function ModalRemove({ onClose, isClicked, name, id, routeData }) {
+function ModalRemove({ onClose, isClicked, name, id, routeData, images = [], description, price, stock, issale, oldprice, onItemDeleted}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
   function handleExit() {
     onClose();
   }
 
   async function handleDelete() {
-    const body = new FormData();
-    body.append("id", id);
-    const resp = await fetch(routeData, { method: "DELETE", body });
-    console.log("Delete response:", resp);
-    alert(`Deleted "${name}"!`);
-    handleExit();
+    setIsDeleting(true);
+    
+    try {
+      const body = new FormData();
+      body.append("id", id);
+      const resp = await fetch(routeData, { method: "DELETE", body });
+      
+      // Check if response was OK
+      if (resp.ok) {
+        onItemDeleted();
+        toast("Item Deleted", {
+          description: `Successfully deleted "${name}".`,
+        });
+        handleExit();
+      } else {
+        throw new Error(`Server returned ${resp.status}`);
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast("Delete failed", {
+        description: `Failed to delete "${name}". Please try again.`,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
     <div
       className={
         isClicked
-          ? "transition ease-in-out fixed inset-0 z-50 backdrop-blur-lg flex items-center justify-center opacity-100 duration-150"
-          : "transition ease-in-out fixed inset-0 z-50 backdrop-blur-lg flex items-center justify-center opacity-0 pointer-events-none duration-150"
+          ? "transition ease-in-out fixed inset-0 z-50 backdrop-blur-md bg-black/50 flex justify-center items-center opacity-100 duration-150"
+          : "transition ease-in-out fixed inset-0 z-50 backdrop-blur-lg flex justify-center items-center opacity-0 pointer-events-none duration-150"
       }
     >
-      <div className="relative w-[90%] max-w-[600px] bg-[#1c1a1b] rounded-3xl p-6 border border-[#111010] drop-shadow-xl flex flex-col items-center justify-center">
-        <button
-          onClick={handleExit}
-          className="absolute right-6 top-6 text-xl text-gray-400 hover:text-gray-200"
-        >
-          ✕
-        </button>
-        <h2 className="text-2xl mb-8 text-center">
-          Delete {name} (ID: {id})?
-        </h2>
-        <button
-          onClick={handleDelete}
-          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:scale-105"
-        >
-          Confirm Delete
-        </button>
+      <div className="relative w-[90%] max-w-[500px] bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl">
+        {/* Header */}
+        <div className="flex items-center mb-4 pb-3 border-b border-gray-800">
+          <h2 className="text-xl font-semibold">Confirm Deletion</h2>
+          <button
+            onClick={handleExit}
+            className="ml-auto rounded-full bg-gray-800 p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 transition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex gap-4">
+          {/* Item image */}
+          <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0">
+            {Array.isArray(images) && images.length > 0 ? (
+              <img
+                src={images[0]}
+                alt={name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                <span className="text-gray-400 text-xs">No Image</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Item details */}
+          <div className="flex-grow">
+            <h3 className="font-medium text-lg mb-1">{name}</h3>
+            <div className="text-sm text-gray-400 mb-1">ID: {id}</div>
+            <div className="flex items-baseline">
+              {issale === "true" ? (
+                <>
+                  <span className="text-red-400 font-bold">${parseFloat(price).toFixed(2)}</span>
+                  <span className="ml-2 text-xs text-gray-400 line-through">${parseFloat(oldprice).toFixed(2)}</span>
+                </>
+              ) : (
+                <span className="text-white font-bold">${parseFloat(price).toFixed(2)}</span>
+              )}
+              <span className="ml-2 text-xs text-gray-400">• {stock} in stock</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Confirmation message */}
+        <div className="mt-4 mb-5 text-gray-300 text-sm">
+          Are you sure you want to delete this item? This action cannot be undone.
+        </div>
+        
+        {/* Action buttons */}
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            onClick={handleExit}
+            className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="flex items-center px-4 py-2 rounded-lg bg-gray-800 text-red-400 hover:bg-red-500 hover:text-white transition"
+          >
+            {isDeleting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Item
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

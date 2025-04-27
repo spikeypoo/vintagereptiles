@@ -7,6 +7,7 @@ import MenuButton from './menubutton';
 import CartNumber from './cartnum';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Footer from './footer';
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -76,6 +77,7 @@ export default function RootLayout({
           <SpeedInsights />
         </div>
         <Footer/>
+        <Toaster />
       </body>
     </html>
   );
