@@ -237,16 +237,16 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
     // if cObj is empty => quantity=0 => optionally remove item entirely
     if (Object.keys(cObj).length === 0) {
       // remove item or keep quantity=0
-      holder[cartKey].quantity = 0;
+      delete holder[cartKey];
     } else {
       let sum = 0;
       for (const val of Object.values(cObj)) {
         sum += val;
       }
       holder[cartKey].quantity = sum;
+      holder[cartKey].chosenColors = cObj;
     }
 
-    holder[cartKey].chosenColors = cObj;
     localStorage.setItem("Cart", JSON.stringify(holder));
     location.reload();
   }

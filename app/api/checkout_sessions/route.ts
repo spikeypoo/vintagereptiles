@@ -8,10 +8,18 @@ import { ObjectId } from "bson";
 export async function POST(req: NextRequest, res: NextResponse) {
   const headersList = headers();
   const cartDetails = await req.json(); 
-  // cartDetails.details => { item1: { product: {...}, stocktrack: {...} }, item2: {...}, ... }
-
-  // We'll build ephemeral line items in this array
-  let lineItems = [];
+  
+  const ELIGIBLE_PRODUCT_IDS = new Set([
+    "prod_SCLs3mv4vbqs76",
+    "prod_Qw2iLBkbaYpORc",
+    "prod_Qw0epnbTOvB2h4",
+    "prod_Qw0XLjxb3ESzla",
+    "prod_Qw0g6pDBQoDUl3",
+    "prod_QsZlszGPRpDInS",
+    "prod_RztCIunfFd9dnv",
+    "prod_RztC8a7cL6Pv2L",
+    "prod_SCLs3mv4vbqs76",
+  ]);
 
   // Validate stock
   const client = await connect;
@@ -19,61 +27,53 @@ export async function POST(req: NextRequest, res: NextResponse) {
   // For each item in cartDetails
   const detailValues = Object.values(cartDetails.details);
 
-  for (let i = 0; i < detailValues.length; i++) {
-    const product = detailValues[i].product; 
-    const stocktrack = detailValues[i].stocktrack;
-
-    // e.g. product might have { price, quantity, color, ... }
-    // stocktrack might have { id, currpage }
-
-    const productId = stocktrack.id;
-    const currpage = stocktrack.currpage;
-    const quantity = product.quantity || 1;
-
-    // Check DB for stock
-    let isExist = await client
-      .db("Products")
-      .collection(currpage.charAt(0).toUpperCase() + currpage.slice(1))
-      .find({ _id: new ObjectId(productId) })
-      .toArray();
-
-    if (!isExist[0] || isExist[0].stock < quantity) {
-      // Not enough in stock or item not found
-      return NextResponse.json({ error: "At least one item isn't in stock!" });
-    }
-  }
-
-  // If stock is fine, build ephemeral line items
-  for (let i = 0; i < detailValues.length; i++) {
-    const product = detailValues[i].product; 
-    const stocktrack = detailValues[i].stocktrack;
-
-    const quantity = product.quantity || 1;
-    const priceNumber = product.price; // numeric price (or string). Convert to cents below
-    const color = product.colors || ""; 
-    // Adjust the property name based on how you store color in product
-
-    // Set up ephemeral line item
-    // If your prices are in CAD, multiply your numeric price by 100
-    // to get the amount in cents
-    // const unitAmount = Math.round(Number(priceNumber) * 100);
-    const unitAmount = (await stripe.prices.retrieve(product.price)).unit_amount;
-
-    // We'll create a line item with ephemeral price_data
-    lineItems.push({
-      price_data: {
-        currency: "cad", // or "usd" if you want
-        unit_amount: unitAmount,
-        product_data: {
-          // The item name (e.g. from DB or from cart)
-          name: product.name,
-          // You can embed color here if you like
-          description: color ? `Color('s): ${color}` : "No colour",
+  const lineItems = await Promise.all(
+    detailValues.map(async ({ product }) => {
+      const qty      = product.quantity || 1;
+      const priceObj = await stripe.prices.retrieve(product.price);
+      const prodId   = typeof priceObj.product === "string"
+        ? priceObj.product
+        : priceObj.product.id;
+  
+      // base unit price
+      let unitAmount = priceObj.unit_amount!;
+  
+      // start with any existing description (e.g. color)
+      let description = product.colors
+        ? `Color(s): ${product.colors}`
+        : "";
+  
+      // only apply bulk‐tier to eligible Products
+      if (ELIGIBLE_PRODUCT_IDS.has(prodId)) {
+        let discountRate = 0;
+        if      (qty >= 30) discountRate = 0.20;
+        else if (qty >= 20) discountRate = 0.15;
+        else if (qty >= 10) discountRate = 0.10;
+  
+        if (discountRate > 0) {
+          // compute the discounted unit price
+          unitAmount = Math.round(unitAmount * (1 - discountRate));
+          // append the bulk‐discount text
+          const note = `Bulk discount applied: ${Math.round(discountRate * 100)}% off`;
+          description = description
+            ? `${description}; ${note}`
+            : note;
+        }
+      }
+  
+      return {
+        price_data: {
+          currency:    "cad",
+          unit_amount: unitAmount,
+          product_data: {
+            name:        product.name,
+            description: description || undefined,  // omit if empty
+          },
         },
-      },
-      quantity: quantity,
-    });
-  }
+        quantity: qty,
+      };
+    })
+  );  
 
   // Now create the Checkout session with ephemeral line items
   try {

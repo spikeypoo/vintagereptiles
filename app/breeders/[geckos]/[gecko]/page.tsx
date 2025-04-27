@@ -213,7 +213,7 @@ export default function ListingDetails({ params }) {
     <div className="max-w-7xl mx-auto px-4 py-8 md:px-8 mb-[100px]">
       {/* Breadcrumb navigation */}
       <nav className="flex items-center mb-8 text-sm">
-        <Link href={`/shop/${currPage}`} className="text-gray-400 hover:text-white transition">
+        <Link href={`/breeders/${currPage}`} className="text-gray-400 hover:text-white transition">
           {currPage && currPage.charAt(0).toUpperCase() + currPage.slice(1)}
         </Link>
         <ChevronRight size={16} className="mx-2 text-gray-400" />

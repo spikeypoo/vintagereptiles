@@ -119,7 +119,7 @@ export default function Home() {
 
           <div className="font-bold text-2xl pb-[10px]">Pickup/Shipping</div>
 
-          Pickups are welcome in Vaughan or occasionally at Reptile Expos. <br/>Shipping is available at the buyer's expense.<br/>You can request a quote or choose the fixed shipping option at checkout.
+          Pickups are welcome in Vaughan or occasionally at Reptile Expos. <br/>Shipping is available at the buyer&apos;s expense.<br/>You can request a quote or choose the fixed shipping option at checkout.
           
           <br></br><br></br>
 
