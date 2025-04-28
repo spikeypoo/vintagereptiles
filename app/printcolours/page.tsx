@@ -9,7 +9,7 @@ export default function Home() {
 
   useEffect(() => {
     const imageList = [];
-    for (let i = 1; i <= 28; i++) {
+    for (let i = 1; i <= 31; i++) {
       imageList.push(`/images/3dprintcolours/${i}.jpg`);
     }
     setImages(imageList);
