@@ -42,6 +42,54 @@ export async function POST(request: Request) {
     }
   }
 
+  // 3) Build initial doc
+  const doc = {
+    name: form.get("name"),
+    price: form.get("price"),
+    description: form.get("description"),
+    issale: form.get("issale"),
+    oldprice: form.get("oldprice"),
+    stock: form.get("stock"),
+    images: images,  // store all images in an array
+  };
+
+  // 4) Connect + insert into MongoDB first
+  const client = await connect;
+  const result = await client.db("Products").collection("Isopods").insertOne(doc);
+
+  // 5) Create Stripe product + price
+  if (doc.price && doc.price !== "") {
+    const mainImage = images.length > 0 ? images[0] : "";
+
+    // Create Stripe product
+    const stripeProduct = await stripe.products.create({
+      name: doc.name?.toString() || "Unnamed",
+      images: mainImage ? [mainImage] : [],
+      shippable: true,
+    });
+
+    // Create Stripe price
+    const stripePrice = await stripe.prices.create({
+      currency: "cad",
+      unit_amount: Number(doc.price) * 100,
+      product: stripeProduct.id,
+    });
+
+    // Update MongoDB document with stripeid and priceid
+    await client.db("Products").collection("Isopods").updateOne(
+      { _id: result.insertedId },
+      { $set: { stripeid: stripeProduct.id, priceid: stripePrice.id } }
+    );
+
+    // Set default price on product
+    await stripe.products.update(stripeProduct.id, {
+      default_price: stripePrice.id,
+    });
+  }
+
+  return Response.json({ message: "successfully uploaded the gecko" });
+}
+
   // 3) Build document to insert
   const doc = {
     name: form.get("name"),

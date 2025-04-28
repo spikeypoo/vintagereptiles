@@ -27,8 +27,16 @@ export async function POST(req: NextRequest, res: NextResponse) {
   // For each item in cartDetails
   const detailValues = Object.values(cartDetails.details);
 
+  console.log(detailValues)
+
   const lineItems = await Promise.all(
     detailValues.map(async ({ product }) => {
+
+      if (!product.price) {
+        console.error('Missing price for product:', product);
+        return;
+      }
+
       const qty      = product.quantity || 1;
       const priceObj = await stripe.prices.retrieve(product.price);
       const prodId   = typeof priceObj.product === "string"
