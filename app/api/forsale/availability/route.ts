@@ -19,6 +19,7 @@ export async function GET() {
       description: true,
       stock: true,
       images: true, // array of image URLs
+      customOptions: true,
     },
     orderBy: { id: 'desc' },
   });
@@ -40,6 +41,14 @@ export async function POST(request: Request) {
     } catch (e) {
       console.error("Failed to parse images JSON:", e);
     }
+  }
+
+  // Parse customOptions
+  let customOptions = [];
+  const optsJson = form.get("customOptions");
+  if (optsJson) {
+    try { customOptions = JSON.parse(optsJson.toString()); }
+    catch (e) { console.error("Invalid customOptions JSON", e); }
   }
 
   // 3) Build initial doc
@@ -68,6 +77,24 @@ export async function POST(request: Request) {
       shippable: true,
     });
 
+    const pricedOptions = await Promise.all(
+      customOptions.map(async opt => {
+        // parse user‐entered price
+        const cents = Math.round(Number(opt.price) * 100);
+        const p = await stripe.prices.create({
+          currency:    "cad",
+          unit_amount: cents,
+          product:     stripeProduct.id,
+        });
+        return {
+          label:      opt.label,
+          imageIndex: opt.imageIndex,
+          price: opt.price,
+          priceid:    p.id,     // <-- store the Stripe Price ID
+        };
+      })
+    );
+
     // Create Stripe price
     const stripePrice = await stripe.prices.create({
       currency: "cad",
@@ -78,7 +105,7 @@ export async function POST(request: Request) {
     // Update MongoDB document with stripeid and priceid
     await client.db("Products").collection("Availability").updateOne(
       { _id: result.insertedId },
-      { $set: { stripeid: stripeProduct.id, priceid: stripePrice.id } }
+      { $set: { stripeid: stripeProduct.id, priceid: stripePrice.id, customOptions: pricedOptions} }
     );
 
     // Set default price on product
@@ -89,7 +116,6 @@ export async function POST(request: Request) {
 
   return Response.json({ message: "successfully uploaded the gecko" });
 }
-
 
 export async function PUT(request: Request) {
   // 1) Parse form data
@@ -105,6 +131,14 @@ export async function PUT(request: Request) {
     } catch (e) {
       console.error("Failed to parse images JSON in PUT:", e);
     }
+  }
+
+  // Parse customOptions
+  let customOptions = [];
+  const optsJson = form.get("customOptions");
+  if (optsJson) {
+    try { customOptions = JSON.parse(optsJson.toString()); }
+    catch (e) { console.error("Invalid customOptions JSON in PUT", e); }
   }
 
   // 3) Build update fields
@@ -185,6 +219,29 @@ export async function PUT(request: Request) {
         active: false,
       });
     }
+
+    const newPricedOptions = await Promise.all(
+      customOptions.map(async opt => {
+        const cents = Math.round(Number(opt.price) * 100);
+        const p = await stripe.prices.create({
+          currency:    "cad",
+          unit_amount: cents,
+          product:     isExist.stripeid,
+        });
+        return {
+          label:      opt.label,
+          imageIndex: opt.imageIndex,
+          price: opt.price,
+          priceid:    p.id,
+        };
+      })
+    );
+  
+    // 5) Overwrite mongo’s customOptions with the new price‐ID’d list
+    await client.db("Products").collection("Availability").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { customOptions: newPricedOptions } }
+    );
 
     await client.db("Products").collection("Availability").findOneAndUpdate(
       { _id: new ObjectId(id) },

@@ -38,10 +38,12 @@ export default function CartDetails() {
       let details = {};
 
       for (const [key, value] of Object.entries(holder)) {
+        const usePriceID = value.chosenOptionPriceID ?? value.priceID;
+
         details[key] = {
           product: {
             name: value.name,
-            price: value.priceID,
+            price: usePriceID,
             quantity: value.quantity,
           },
           stocktrack: {
@@ -49,6 +51,8 @@ export default function CartDetails() {
             currpage: value.currpage,
           },
         };
+
+        details[key].chosenOption = value.chosenOption || "";
 
         // Combine color data into a string, if needed for your checkout
         let colorDisplay = "";
@@ -132,6 +136,7 @@ export default function CartDetails() {
                     "d3ke37ygqgdiqe.cloudfront.net/"
                   )}
                   colors={data.chosenColors}
+                  chosenOption={data.chosenOption}
                 />
               ))}
             </div>
@@ -174,7 +179,7 @@ export default function CartDetails() {
   );
 }
 
-function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
+function CartCard({ cartKey, index, name, price, quantity, image, colors, chosenOption }) {
   const [itemPrice, setItemPrice] = useState(price);
   
   // For a 3D print item, "colors" is presumably an object like { Red: 2, Blue: 1 }
@@ -274,6 +279,10 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
             </div>
             <div className="ml-4">
               <div className="text-white font-medium">{name}</div>
+
+              {chosenOption && (
+                <div className="text-gray-400 text-sm mt-1">Selected: {chosenOption}</div>
+              )}
               
               {/* Delete button */}
               <button
@@ -336,6 +345,9 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors }) {
           </div>
           <div className="ml-3 flex-1">
             <div className="text-white font-medium mb-1">{name}</div>
+            {chosenOption && (
+              <div className="text-gray-400 text-sm mb-1">Selected: {chosenOption}</div>
+            )}
             <div className="text-white">${parseFloat(price).toFixed(2)}</div>
           </div>
         </div>

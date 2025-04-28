@@ -22,6 +22,7 @@ model Availability {
   priceid     String
   stock       String
   stripeid    String
+  customOptions Json     @default("[]")
 }
 
 model Femalechahouageckos {
@@ -37,6 +38,7 @@ model Femalechahouageckos {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Femalecrestedgeckos {
@@ -52,6 +54,7 @@ model Femalecrestedgeckos {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Femalegargoylegeckos {
@@ -67,6 +70,7 @@ model Femalegargoylegeckos {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Females {
@@ -81,6 +85,7 @@ model Females {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Isopods {
@@ -96,6 +101,7 @@ model Isopods {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Malechahouageckos {
@@ -111,6 +117,7 @@ model Malechahouageckos {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Malecrestedgeckos {
@@ -126,6 +133,7 @@ model Malecrestedgeckos {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Malegargoylegeckos {
@@ -141,6 +149,7 @@ model Malegargoylegeckos {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Males {
@@ -155,6 +164,7 @@ model Males {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Plants {
@@ -170,6 +180,7 @@ model Plants {
   oldprice    String
   price       String
   stock       String
+  customOptions Json     @default("[]")
 }
 
 model Prints {
@@ -187,4 +198,5 @@ model Prints {
   priceid     String?
   stock       String
   stripeid    String?
+  customOptions Json     @default("[]")
 }

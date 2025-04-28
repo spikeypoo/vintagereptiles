@@ -17,6 +17,10 @@ export default function ListingDetails({ params }) {
   const [currPage, setPage] = useState();
   const [addingToCart, setAddingToCart] = useState(false);
 
+  const [selectedOption, setSelectedOption] = useState("");
+
+  const [quantity, setQuantity] = useState(1);
+
   const { listing } = use(params);
   const items = listing.split("-");
   const id = items[1];
@@ -56,6 +60,14 @@ export default function ListingDetails({ params }) {
   
     fetchData();
   }, [id, page]);
+
+  const displayPrice = () => {
+    if (selectedOption && Array.isArray(listingData.customOptions)) {
+      const opt = listingData.customOptions.find(o => o.label === selectedOption);
+      if (opt && opt.price) return parseFloat(opt.price).toFixed(2);
+    }
+    return parseFloat(listingData.price).toFixed(2);
+  };
   
 
   // Build array of images (filter out empty if needed)
@@ -63,68 +75,84 @@ export default function ListingDetails({ params }) {
     ? listingData.images.filter((img) => img !== "")
     : [];
 
+    const handleOptionChange = (label) => {
+      setSelectedOption(label);
+      const opt = listingData.customOptions.find(o => o.label === label);
+      if (opt && images[opt.imageIndex]) {
+        setCurrentIndex(opt.imageIndex);
+        setFocused(
+          images[opt.imageIndex].replace(
+            "vintage-reptiles-storage.s3.us-east-2.amazonaws.com/",
+            "d3ke37ygqgdiqe.cloudfront.net/"
+          )
+        );
+      }
+    };
+
   // Add to Cart
   const handleAdd = () => {
     setAddingToCart(true);
 
-    let current = localStorage.getItem("Cart");
-    if (current == null) {
-      localStorage.setItem("Cart", "{}");
-      current = "{}";
-    }
-    const cartObj = JSON.parse(current);
+    // 1) Grab (or init) cart
+    const raw = localStorage.getItem("Cart") || "{}";
+    const cartObj = JSON.parse(raw);
 
-    const listingID = params.listing.split("-")[1];
+    // 2) Build a composite key:
+    //    base is the product ID, then append option & colour if set
+    const baseId = params.listing.split("-")[1];
+    let cartKey = baseId;
+    if (selectedOption)    cartKey += `:${selectedOption}`;
+    if (currPage === "prints" && selectedColor) cartKey += `:${selectedColor}`;
 
-    if (listingID in cartObj) {
-      // Already in cart, just increment quantity
-      if (currPage != "prints") {
-        cartObj[listingID].quantity += 1;
-      } else {
-        cartObj[listingID].quantity += 1;
-
-        if (selectedColor in cartObj[listingID].chosenColors) {
-          cartObj[listingID].chosenColors[selectedColor] += 1;
-        } else {
-          cartObj[listingID].chosenColors[selectedColor] = 1;
-        }
+    // 3) Increment existing or create new entry under cartKey
+    if (cartObj[cartKey]) {
+      // already in cart — add selected quantity
+      cartObj[cartKey].quantity += quantity;
+      if (currPage === "prints") {
+        cartObj[cartKey].chosenColors[selectedColor] =
+          (cartObj[cartKey].chosenColors[selectedColor] || 0) + quantity;
       }
     } else {
-      // If there's at least one image, pick the first for cart preview
-      const mainImage = images.length > 0 ? images[0] : "";
+      // brand new slot in cart
+      const mainImage = images[0] || "";
 
-      if (currPage != "prints") {
-        cartObj[listingID] = {
-          name: listingData.name,
-          price: listingData.price,
-          image: mainImage,
-          quantity: 1,
-          priceID: listingData.priceid,
-          currpage: currPage,
-          id: itemID,
-        };
-      } else {
-        cartObj[listingID] = {
-          name: listingData.name,
-          price: listingData.price,
-          image: mainImage,
-          quantity: 1,
-          priceID: listingData.priceid,
-          currpage: currPage,
-          id: itemID,
-          chosenColors: {},
-        };
-        cartObj[listingID].chosenColors[selectedColor] = 1;
+      // always store both the display price *and* the Stripe Price ID
+      const entry: any = {
+        name:        listingData.name,
+        price:       displayPrice(),        // string or number
+        priceID:     listingData.priceid,   // fallback
+        image:       mainImage,
+        quantity:    quantity,
+        currpage:    currPage,
+        id:          itemID,
+        chosenOption:    selectedOption || null,
+        chosenOptionPriceID: null,
+      };
+
+      // if we have customOptions, save its Stripe price ID too
+      if (selectedOption) {
+        const opt = listingData.customOptions.find(o => o.label === selectedOption);
+        if (opt) {
+          entry.chosenOptionPriceID = opt.priceid;
+        }
       }
+
+      // prints also track colours per-colour
+      if (currPage === "prints") {
+        entry.chosenColors = { [selectedColor]: quantity };
+      }
+
+      cartObj[cartKey] = entry;
     }
 
+    // 4) persist & refresh
     localStorage.setItem("Cart", JSON.stringify(cartObj));
-    
     setTimeout(() => {
       setAddingToCart(false);
       location.reload();
     }, 600);
   };
+
 
   // Modal (lightbox) logic
   const openModal = (index) => {
@@ -323,7 +351,7 @@ export default function ListingDetails({ params }) {
                 {listingData.price !== "" && (
                   <div className="flex items-center">
                     <span className={`text-2xl font-bold ${listingData.issale === "true" ? "text-red-500" : "text-white"}`}>
-                      ${parseFloat(listingData.price).toFixed(2)}
+                        ${displayPrice()}
                     </span>
                     
                     {listingData.issale === "true" && (
@@ -355,6 +383,33 @@ export default function ListingDetails({ params }) {
                 }}
               />
             </div>
+
+            {/* Custom Options Dropdown */}
+            {Array.isArray(listingData.customOptions) && listingData.customOptions.length > 0 && (
+              <div className="mb-6">
+                <label className="block mb-2 text-white font-medium">
+                  Select Option
+                </label>
+                <select
+                  className="bg-[#1c1a1b] text-white border border-[#3a3839] p-2.5 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-[#cb18db]"
+                  value={selectedOption}
+                  onChange={(e) => handleOptionChange(e.target.value)}
+                  required
+                >
+                  <option value="">Choose an option</option>
+                  {listingData.customOptions.map((opt, idx) => (
+                    <option key={idx} value={opt.label}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {!selectedOption && (
+                  <p className="text-sm text-yellow-500 mt-1">
+                    Please select an option
+                  </p>
+                )}
+              </div>
+            )}
             
             {/* Color selection for prints */}
             {currPage == "prints" && (
@@ -382,16 +437,63 @@ export default function ListingDetails({ params }) {
                 )}
               </div>
             )}
+
+            <div className="mb-6">
+              <label className="block mb-2 text-white font-medium">
+                Quantity
+              </label>
+              <div className="flex items-center">
+                <button 
+                  type="button"
+                  className="bg-[#1c1a1b] text-white border border-[#3a3839] px-3 py-2 rounded-l-lg hover:bg-[#2c2a2b] transition-colors"
+                  onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                  aria-label="Decrease quantity"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  className="bg-[#1c1a1b] text-white border-y border-[#3a3839] py-2 px-3 w-16 text-center focus:outline-none"
+                  value={quantity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (!isNaN(val) && val > 0) {
+                      setQuantity(Math.min(val, parseInt(listingData.stock) || 999));
+                    }
+                  }}
+                  min="1"
+                  max={listingData.stock || 999}
+                />
+                <button 
+                  type="button"
+                  className="bg-[#1c1a1b] text-white border border-[#3a3839] px-3 py-2 rounded-r-lg hover:bg-[#2c2a2b] transition-colors"
+                  onClick={() => setQuantity(prev => Math.min(parseInt(listingData.stock) || 999, prev + 1))}
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+              {quantity > (parseInt(listingData.stock) || 0) && (
+                <p className="text-sm text-red-500 mt-1">
+                  Only {listingData.stock} available in stock
+                </p>
+              )}
+            </div>
             
             {/* Add to cart button */}
             <div className="mt-6">
-              <button
+            <button
                 className={`flex items-center justify-center gap-2 font-bold text-white bg-[#cb18db] w-full sm:w-auto px-8 py-3 rounded-full text-lg transition-all duration-300
                 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#a814b6]'}
-                ${(currPage === "prints" && selectedColor === "") ? 'opacity-50 cursor-not-allowed' : ''}
+                ${((currPage === "prints" && selectedColor === "") || (Array.isArray(listingData.customOptions) && listingData.customOptions.length > 0 && !selectedOption)) ? 'opacity-50 cursor-not-allowed' : ''}
                 ${addingToCart ? 'animate-pulse' : ''}`}
                 onClick={handleAdd}
-                disabled={isOutOfStock || (currPage === "prints" && selectedColor === "") || addingToCart}
+                disabled={
+                  isOutOfStock || 
+                  (currPage === "prints" && selectedColor === "") || 
+                  (Array.isArray(listingData.customOptions) && listingData.customOptions.length > 0 && !selectedOption) ||
+                  addingToCart
+                }
               >
                 <ShoppingCart size={20} />
                 {addingToCart ? 'Adding...' : isOutOfStock ? 'Out of Stock' : 'Add to Cart'}

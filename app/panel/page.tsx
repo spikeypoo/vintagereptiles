@@ -35,6 +35,14 @@ export default function Home() {
     stock: "",
   });
 
+  // Whether custom options are enabled
+  const [hasCustomOptions, setHasCustomOptions] = useState(false);
+  // An array of { label: string, imageIndex: number }
+  const [customOptions, setCustomOptions] = useState<
+    { label: string; imageIndex: number; price: string }[]
+  >([]);
+
+
   // Sale state for ADD
   const [isSale, setSale] = useState(false);
   const [olderPrice, setOldPrice] = useState("Not Used");
@@ -209,6 +217,10 @@ export default function Home() {
 
     // Append the images array
     finalBody.append("images", JSON.stringify(uploadedUrls));
+
+    if (hasCustomOptions) {
+      finalBody.append("customOptions", JSON.stringify(customOptions));
+    }    
 
     const resp = await fetch(routeData, { method: "POST", body: finalBody });
     console.log("Created new item. Resp:", resp);
@@ -390,8 +402,93 @@ export default function Home() {
                         onCheckedChange={setSale}
                       />
                     </div>
+                    <div className="flex items-center gap-2 bg-gray-700 rounded-md border border-gray-600 px-3">
+                      <label className="text-gray-300 text-sm">Custom Options</label>
+                      <Switch
+                        checked={hasCustomOptions}
+                        onCheckedChange={setHasCustomOptions}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {hasCustomOptions && (
+                  <div className="mb-6 space-y-2">
+                    <p className="text-gray-400 text-sm">Define Options:</p>
+                    {customOptions.map((opt, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        {/* Option Label */}
+                        <input
+                          type="text"
+                          placeholder="Option name"
+                          value={opt.label}
+                          onChange={e => {
+                            const newOpts = [...customOptions];
+                            newOpts[idx].label = e.target.value;
+                            setCustomOptions(newOpts);
+                          }}
+                          className="flex-1 p-2 rounded bg-gray-700 text-gray-200"
+                        />
+
+                        {/* Image selector */}
+                        <select
+                          value={opt.imageIndex}
+                          onChange={e => {
+                            const newOpts = [...customOptions];
+                            newOpts[idx].imageIndex = Number(e.target.value);
+                            setCustomOptions(newOpts);
+                          }}
+                          className="p-2 rounded bg-gray-700 text-gray-200"
+                        >
+                          <option value="">Image #</option>
+                          {files.map((_, i) => (
+                            <option key={i} value={i}>
+                              #{i+1}
+                            </option>
+                          ))}
+                        </select>
+
+                        {/* NEW: Price for this option */}
+                        <div className="relative">
+                          <span className="absolute left-2 top-2 text-gray-400">$</span>
+                          <input
+                            type="text"
+                            placeholder="0.00"
+                            value={opt.price}
+                            onChange={e => {
+                              const newOpts = [...customOptions];
+                              newOpts[idx].price = e.target.value;
+                              setCustomOptions(newOpts);
+                            }}
+                            className="w-20 pl-6 p-2 rounded bg-gray-700 text-gray-200"
+                          />
+                        </div>
+
+                        {/* Remove button */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCustomOptions(customOptions.filter((_, i) => i !== idx))
+                          }
+                          className="text-red-500"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCustomOptions([...customOptions, { label: "", imageIndex: 0, price: ""}])
+                      }
+                      className="text-sm text-purple-400 hover:underline"
+                    >
+                      + Add another option
+                    </button>
+                  </div>
+                )}
+
                   
                   {/* Old Price (only if on sale) */}
                   {isSale && (
@@ -744,6 +841,7 @@ function ModalEdit({
   id,
   routeData,
   onUpdate,
+  customOptions = [],
 }) {
   // We clone the existing images into state so we can remove them
   const [localImages, setLocalImages] = useState([...images]);
@@ -762,6 +860,22 @@ function ModalEdit({
 
   // For newly selected images (the user might add more)
   const [newFiles, setNewFiles] = useState([]);
+
+  const [hasCustomOptions, setHasCustomOptions] = useState(
+    Array.isArray(customOptions) && customOptions.length > 0
+  );
+  // The array of { label, imageIndex }
+  const [options, setOptions] = useState<
+    { label: string; imageIndex: number; price: string }[]
+  >(
+    (customOptions || []).map(opt => ({
+      label: opt.label,
+      imageIndex: opt.imageIndex,
+      price: opt.price ?? ""
+    }))
+  );
+
+  const dropdownCount = localImages.length + newFiles.length;
 
   function handleExit() {
     onClose();
@@ -871,6 +985,10 @@ function ModalEdit({
 
     finalBody.append("images", JSON.stringify(updatedImages));
 
+    if (hasCustomOptions) {
+      finalBody.append("customOptions", JSON.stringify(options));
+    }
+
     // 4) Send to DB route
     const resp = await fetch(routeData, { method: "PUT", body: finalBody });
     if (resp.ok) {
@@ -950,6 +1068,92 @@ function ModalEdit({
                   className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700"
                 />
               </div>
+            </div>
+
+            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-gray-300">Custom Options</label>
+                <Switch
+                  checked={hasCustomOptions}
+                  onCheckedChange={setHasCustomOptions}
+                />
+              </div>
+
+              {hasCustomOptions && (
+                <div className="mt-3 max-h-60 overflow-y-auto space-y-2">
+                  {options.map((opt, idx) => (
+                    <div key={idx} className="flex flex-wrap items-center gap-2">
+                      {/* Option label */}
+                      <input
+                        type="text"
+                        value={opt.label}
+                        onChange={e => {
+                          const arr = [...options];
+                          arr[idx].label = e.target.value;
+                          setOptions(arr);
+                        }}
+                        placeholder="Option name"
+                        className="flex-1 min-w-0 p-2 rounded bg-gray-700 text-gray-200"
+                      />
+
+                      {/* Image picker */}
+                      <select
+                        value={opt.imageIndex}
+                        onChange={e => {
+                          const arr = [...options];
+                          arr[idx].imageIndex = Number(e.target.value);
+                          setOptions(arr);
+                        }}
+                        className="p-2 rounded bg-gray-700 text-gray-200 flex-shrink-0"
+                      >
+                        <option value="">Image #</option>
+                        {Array.from({ length: dropdownCount }).map((_, i) => (
+                          <option key={i} value={i}>{`#${i + 1}`}</option>
+                        ))}
+                      </select>
+
+                      {/* Per-option price */}
+                      <div className="relative flex-shrink-0">
+                        <span className="absolute left-2 top-2 text-gray-400">$</span>
+                        <input
+                          type="text"
+                          value={opt.price}
+                          onChange={e => {
+                            const arr = [...options];
+                            arr[idx].price = e.target.value;
+                            setOptions(arr);
+                          }}
+                          placeholder="0.00"
+                          className="w-20 pl-6 p-2 rounded bg-gray-700 text-gray-200"
+                        />
+                      </div>
+
+                      {/* Remove button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOptions(options.filter((_, i) => i !== idx));
+                        }}
+                        className="text-red-500 flex-shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Add another option */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOptions([...options, { label: "", imageIndex: 0, price: "" }])
+                    }
+                    className="text-sm text-purple-400 hover:underline"
+                  >
+                    + Add option
+                  </button>
+                </div>
+              )}
+
             </div>
 
             {/* Sale toggle with slider */}

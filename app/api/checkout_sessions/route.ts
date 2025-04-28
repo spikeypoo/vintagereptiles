@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
   console.log(detailValues)
 
   const lineItems = await Promise.all(
-    detailValues.map(async ({ product }) => {
+    detailValues.map(async ({ product, chosenOption}) => {
 
       if (!product.price) {
         console.error('Missing price for product:', product);
@@ -50,6 +50,13 @@ export async function POST(req: NextRequest, res: NextResponse) {
       let description = product.colors
         ? `Color(s): ${product.colors}`
         : "";
+
+        if (chosenOption) {
+          const optionNote = `Option: ${chosenOption}`;
+          description = description
+            ? `${description}; ${optionNote}`
+            : optionNote;
+        }
   
       // only apply bulk‐tier to eligible Products
       if (ELIGIBLE_PRODUCT_IDS.has(prodId)) {
