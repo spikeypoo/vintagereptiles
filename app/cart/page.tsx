@@ -5,10 +5,15 @@ import Link from "next/link";
 import "@/app/globals.css";
 import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import { PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { useRouter } from "next/navigation";
 
 export default function CartDetails() {
   const [cards, setCards] = useState([]);
   const [totalPrice, setTotal] = useState(0);
+
+  const router = useRouter();
 
   useEffect(() => {
     const rawCart = localStorage.getItem("Cart");
@@ -81,14 +86,16 @@ export default function CartDetails() {
       });
 
       const ses = await checkoutResponse.json();
-      const { sessionId } = ses;
+      const { clientSecret} = ses;
 
       if (ses.error === "At least one item isn't in stock!") {
         alert(ses.error);
         return;
       }
 
-      await stripe.redirectToCheckout({ sessionId });
+      console.log("client secret: " + clientSecret);
+
+      router.push(`/checkout?clientSecret=${encodeURIComponent(clientSecret)}`);
     } catch (error) {
       console.error(error);
     }

@@ -90,7 +90,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
     })
   );  
 
-  // Now create the Checkout session with ephemeral line items
+  // Now create the Checkout session with embedded checkout enabled
   try {
     const session = await stripe.checkout.sessions.create({
       shipping_address_collection: { allowed_countries: ["CA"] },
@@ -149,11 +149,15 @@ export async function POST(req: NextRequest, res: NextResponse) {
       payment_method_types: ["card", "afterpay_clearpay"],
       line_items: lineItems,
       mode: "payment",
-      success_url: `${headersList.get("origin")}/thank-you`,
-      cancel_url: `${headersList.get("origin")}/cart`,
+      ui_mode: "custom", // This enables embedded checkout
+      return_url: `${headersList.get("origin")}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
     });
 
-    return NextResponse.json({ sessionId: session.id });
+    console.log(session.client_secret);
+
+    return NextResponse.json({ 
+      clientSecret: session.client_secret,
+    });
   } catch (err) {
     console.log(err);
     return NextResponse.json({ error: "Error creating checkout session" });
