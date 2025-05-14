@@ -122,7 +122,7 @@ const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
             value={email}
             onChange={handleChange}
             onBlur={handleBlur}
-            placeholder="you@example.com"
+            placeholder="Enter Email"
             className="w-full px-4 py-3 mt-2 rounded-md bg-[#2a2728] border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-[#cb18db] focus:border-transparent transition duration-200"
           />
         </label>
@@ -145,142 +145,284 @@ const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
   );
 };
 
-const BillingAddressStep = ({ onComplete }) => {
-  return (
-    <div className="bg-[#1d1b1b] rounded-lg p-6 mb-4 shadow-lg border border-gray-800">
-      <div className="bg-[#2a2728] rounded-md p-4">
-        <AddressElement
-          options={{ mode: 'billing' }}
-          className="stripe-element"
-        />
-      </div>
+// BillingAddressStep Component with "Same as shipping" checkbox
+// Complete BillingAddressStep with styled checkbox
+const BillingAddressStep = ({ onComplete, shippingAddressData }) => {
+    const [sameAsShipping, setSameAsShipping] = useState(false);
+    const checkout = useCheckout();
+    
+    useEffect(() => {
+      const updateBillingAddress = async () => {
+        if (sameAsShipping && shippingAddressData) {
+          try {
+            // Apply shipping address to billing using Stripe's API
+            // This approach depends on your specific implementation of Stripe Checkout
+            // You might need to adjust based on your checkout object structure
+            await checkout.updateAddress({
+              type: 'billing',
+              address: {
+                ...shippingAddressData.address
+              },
+              name: shippingAddressData.name
+            });
+          } catch (error) {
+            console.error("Error copying shipping address to billing:", error);
+          }
+        }
+      };
       
-      <div className="flex justify-end mt-6">
-        <button 
-          onClick={onComplete}
-          className="bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white font-bold py-3 px-6 rounded-md hover:from-[#d334e7] hover:to-[#b321c9] focus:outline-none focus:ring-2 focus:ring-[#cb18db] transition duration-200 flex items-center"
-        >
-          Continue <ArrowRight className="ml-2 w-4 h-4" />
-        </button>
+      updateBillingAddress();
+    }, [sameAsShipping, shippingAddressData, checkout]);
+  
+    return (
+      <div className="bg-[#1d1b1b] rounded-lg p-6 mb-4 shadow-lg border border-gray-800">
+        <div className="mb-6">
+          <label className="flex items-center text-white cursor-pointer group">
+            <div className="relative flex items-center">
+              <input
+                type="checkbox"
+                checked={sameAsShipping}
+                onChange={(e) => setSameAsShipping(e.target.checked)}
+                className="sr-only"
+              />
+              <div className={`
+                w-6 h-6 flex-shrink-0 rounded-md mr-3 border-2 transition-all duration-200
+                ${sameAsShipping 
+                  ? 'bg-gradient-to-r from-[#cb18db] to-[#a012b8] border-transparent' 
+                  : 'bg-[#2a2728] border-gray-600 group-hover:border-[#cb18db]'}
+              `}>
+                {sameAsShipping && (
+                  <svg className="w-full h-full text-white p-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                )}
+              </div>
+            </div>
+            <span className="text-lg">Billing address is same as shipping address</span>
+          </label>
+        </div>
+        
+        {!sameAsShipping ? (
+          <div className="bg-[#2a2728] rounded-md p-4 transition-all duration-300 opacity-100 max-h-[500px] overflow-hidden">
+            <AddressElement
+              options={{ mode: 'billing' }}
+              className="stripe-element"
+            />
+          </div>
+        ) : (
+          <div className="px-4 py-3 bg-[#2a1f2c] rounded-md border border-[#cb18db]/30 transition-all duration-300">
+            <p className="text-gray-300 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#cb18db] mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Using your shipping address for billing
+            </p>
+          </div>
+        )}
+        
+        <div className="flex justify-end mt-6">
+          <button 
+            onClick={onComplete}
+            className="bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white font-bold py-3 px-6 rounded-md hover:from-[#d334e7] hover:to-[#b321c9] focus:outline-none focus:ring-2 focus:ring-[#cb18db] transition duration-200 flex items-center"
+          >
+            Continue <ArrowRight className="ml-2 w-4 h-4" />
+          </button>
+        </div>
       </div>
-    </div>
-  );
-};
-
-const ShippingAddressStep = ({ onComplete }) => {
-  return (
-    <div className="bg-[#1d1b1b] rounded-lg p-6 mb-4 shadow-lg border border-gray-800">
-      <div className="bg-[#2a2728] rounded-md p-4">
-        <AddressElement
-          options={{ mode: 'shipping' }}
-          className="stripe-element"
-        />
-      </div>
-      
-      <div className="flex justify-end mt-6">
-        <button 
-          onClick={onComplete}
-          className="bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white font-bold py-3 px-6 rounded-md hover:from-[#d334e7] hover:to-[#b321c9] focus:outline-none focus:ring-2 focus:ring-[#cb18db] transition duration-200 flex items-center"
-        >
-          Continue <ArrowRight className="ml-2 w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const ShippingMethodsStep = ({ onComplete }) => {
-  const checkout = useCheckout();
-  const [selectedOption, setSelectedOption] = useState(
-    checkout?.shippingOptions?.length > 0 ? checkout.shippingOptions[0].id : null
-  );
-
-  const handleSelectOption = async (optId) => {
-    setSelectedOption(optId);
-    await checkout.updateShippingOption(optId);
+    );
   };
 
-  // Example estimated delivery times - you'd have real data here
-  const getEstimatedDelivery = (optName) => {
-    if (optName.toLowerCase().includes('express')) return "1-2 Business Days";
-    if (optName.toLowerCase().includes('standard')) return "3-5 Business Days";
-    return "5-7 Business Days";
+  const updateShippingOptions = async (shippingDetails) => {
+    const res = await fetch("/api/calculate-shipping-options", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        checkout_session_id: checkout.id,
+        shipping_details: shippingDetails,
+      }),
+    });
+    const json = await res.json();
+    if (json.type === "error") {
+      throw new Error(json.message);
+    }
+    // success: Stripe session has been updated server-side
   };
 
-  if (!checkout?.shippingOptions?.length) {
-    return null;
+  export function ShippingAddressStep({ onComplete }) {
+    // 👇 pull runServerUpdate directly from the hook
+    const { runServerUpdate, getShippingAddressElement, id: sessionId } = useCheckout();
+    const [error, setError] = useState(null);
+  
+    const handleSave = async () => {
+      setError(null);
+  
+      // 1) Grab the AddressElement instance
+      const addressElement = getShippingAddressElement();
+      if (!addressElement) {
+        setError("Could not access the address form");
+        return;
+      }
+  
+      // 2) Read its value & check completeness
+      const { value, complete } = await addressElement.getValue();
+      if (!complete) {
+        setError("Please complete your shipping address");
+        return;
+      }
+  
+      try {
+        // 3) Wrap your API POST in runServerUpdate
+        await runServerUpdate(async () => {
+          const res = await fetch("/api/calculate-shipping-options", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              checkout_session_id: sessionId,
+              shipping_details: value,
+            }),
+          });
+          const json = await res.json();
+          if (json.type === "error") {
+            throw new Error(json.message);
+          }
+          // your server has now updated stripe.checkout.sessions with new rates
+        });
+  
+        // 4) success! move to the next step
+        onComplete();
+      } catch (e) {
+        setError(e.message);
+      }
+    };
+  
+    return (
+      <div className="bg-[#1d1b1b] p-6 rounded-lg">
+        <AddressElement options={{ mode: "shipping" }} />
+        {error && <p className="text-red-400 mt-2">{error}</p>}
+        <button
+          onClick={handleSave}
+          className="mt-4 px-6 py-3 bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white rounded"
+        >
+          Continue
+        </button>
+      </div>
+    );
   }
 
-  return (
-    <div className="bg-[#1d1b1b] rounded-lg p-6 mb-4 shadow-lg border border-gray-800">
-      <div className="grid gap-4">
-        {checkout.shippingOptions.map((opt) => {
-          const isSelected = selectedOption === opt.id;
-          const estimatedDelivery = getEstimatedDelivery(opt.displayName);
-          
-          return (
-            <div 
-              key={opt.id} 
-              onClick={() => handleSelectOption(opt.id)}
-              className={`
-                p-4 rounded-lg border cursor-pointer transition-all duration-200
-                ${isSelected 
-                  ? 'border-[#cb18db] bg-gradient-to-r from-[#2a1f2c] to-[#231b24] shadow-lg' 
-                  : 'border-gray-700 bg-[#2a2728] hover:border-[#cb18db]'}
-              `}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className={`
-                    w-12 h-12 rounded-full flex items-center justify-center mr-4
-                    ${isSelected ? 'bg-[#cb18db]' : 'bg-gray-700'}
-                  `}>
-                    {opt.displayName.toLowerCase().includes('express') ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    ) : (
-                      <Truck className="h-6 w-6 text-white" />
-                    )}
+
+const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
+    const checkout = useCheckout();
+    const [selectedOption, setSelectedOption] = useState(null);
+    const [initialized, setInitialized] = useState(false);
+  
+    // Initialize selected option and shipping cost just once
+    useEffect(() => {
+      if (!initialized && checkout?.shippingOptions?.length > 0) {
+        const defaultOption = checkout.shippingOptions[0];
+        
+        setInitialized(true);
+      }
+    }, [checkout?.shippingOptions, initialized, updateShipping]);
+  
+    const handleSelectOption = async (optId) => {
+      if (optId === selectedOption) return; // Prevent unnecessary updates
+      
+      setSelectedOption(optId);
+      try {
+        await checkout.updateShippingOption(optId);
+        
+        // Update shipping cost in order summary
+        const selectedShippingOption = checkout.shippingOptions.find(opt => opt.id === optId);
+        if (selectedShippingOption) {
+          const cost = parseFloat(selectedShippingOption.amount.replace(/[^0-9.]/g, '')) || 0;
+          updateShipping(cost);
+        }
+      } catch (error) {
+        console.error("Error updating shipping option:", error);
+      }
+    };
+  
+    // Example estimated delivery times - you'd have real data here
+    const getEstimatedDelivery = (optName) => {
+      if (optName.toLowerCase().includes('express')) return "1-2 Business Days";
+      if (optName.toLowerCase().includes('standard')) return "3-5 Business Days";
+      return "5-7 Business Days";
+    };
+  
+    if (!checkout?.shippingOptions?.length) {
+      return null;
+    }
+  
+    return (
+      <div className="bg-[#1d1b1b] rounded-lg p-6 mb-4 shadow-lg border border-gray-800">
+        <div className="grid gap-4">
+          {checkout.shippingOptions.map((opt) => {
+            const isSelected = selectedOption === opt.id;
+            const estimatedDelivery = getEstimatedDelivery(opt.displayName);
+            
+            return (
+              <div 
+                key={opt.id} 
+                onClick={() => handleSelectOption(opt.id)}
+                className={`
+                  p-4 rounded-lg border cursor-pointer transition-all duration-200
+                  ${isSelected 
+                    ? 'border-[#cb18db] bg-gradient-to-r from-[#2a1f2c] to-[#231b24] shadow-lg' 
+                    : 'border-gray-700 bg-[#2a2728] hover:border-[#cb18db]'}
+                `}
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-start">
+                    <div className={`
+                      w-12 h-12 min-w-12 rounded-full flex items-center justify-center mr-4 flex-shrink-0
+                      ${isSelected ? 'bg-[#cb18db]' : 'bg-gray-700'}
+                    `}>
+                      {opt.displayName.toLowerCase().includes('express') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      ) : (
+                        <Truck className="h-6 w-6 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1 pr-4">
+                      <h4 className="text-white font-semibold text-lg break-words">{opt.displayName}</h4>
+                      <div className="flex items-center mt-1">
+                        <Clock className="h-4 w-4 text-gray-400 mr-1 flex-shrink-0" />
+                        <span className="text-gray-400 text-sm">{estimatedDelivery}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-white font-semibold text-lg">{opt.displayName}</h4>
-                    <div className="flex items-center mt-1">
-                      <Clock className="h-4 w-4 text-gray-400 mr-1" />
-                      <span className="text-gray-400 text-sm">{estimatedDelivery}</span>
+                  <div className="flex items-center mt-4 md:mt-0 ml-16 md:ml-4 flex-shrink-0">
+                    <div className="text-white font-bold text-xl mr-4 whitespace-nowrap">
+                      {opt.amount === `CA$0.00` ? "FREE" : opt.amount}
+                    </div>
+                    <div className={`
+                      w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0
+                      ${isSelected 
+                        ? 'border-[#cb18db] bg-[#cb18db]' 
+                        : 'border-gray-500'}
+                    `}>
+                      {isSelected && <Check className="h-4 w-4 text-white" />}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <div className="text-white font-bold text-xl mr-4">
-                    {opt.amount === `CA$0.00` ? "FREE" : opt.amount}
-                  </div>
-                  <div className={`
-                    w-6 h-6 rounded-full border-2 flex items-center justify-center
-                    ${isSelected 
-                      ? 'border-[#cb18db] bg-[#cb18db]' 
-                      : 'border-gray-500'}
-                  `}>
-                    {isSelected && <Check className="h-4 w-4 text-white" />}
-                  </div>
-                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        
+        <div className="flex justify-end mt-6">
+          <button 
+            onClick={onComplete}
+            className="bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white font-bold py-3 px-6 rounded-md hover:from-[#d334e7] hover:to-[#b321c9] focus:outline-none focus:ring-2 focus:ring-[#cb18db] transition duration-200 flex items-center"
+          >
+            Continue <ArrowRight className="ml-2 w-4 h-4" />
+          </button>
+        </div>
       </div>
-      
-      <div className="flex justify-end mt-6">
-        <button 
-          onClick={onComplete}
-          className="bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white font-bold py-3 px-6 rounded-md hover:from-[#d334e7] hover:to-[#b321c9] focus:outline-none focus:ring-2 focus:ring-[#cb18db] transition duration-200 flex items-center"
-        >
-          Continue <ArrowRight className="ml-2 w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
+    );
+  };
 
 const PaymentStep = ({ isLoading, handleSubmit, message, total }) => {
   return (
@@ -343,139 +485,152 @@ const PaymentStep = ({ isLoading, handleSubmit, message, total }) => {
   );
 };
 
-const CheckoutForm = () => {
-  const checkout = useCheckout();
-  const { session } = checkout;
-
-  const [currentStep, setCurrentStep] = useState(1);
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState(null);
-  const [message, setMessage] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [stepsCompleted, setStepsCompleted] = useState({
-    1: false,
-    2: false,
-    3: false,
-    4: false,
-  });
+const CheckoutForm = ({ updateShipping }) => {
+    const checkout = useCheckout();
+    const { session } = checkout;
   
-  // Get formatted total amount
-  const total = checkout?.total?.total?.amount;
-
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-    setIsLoading(true);
-
-    const { isValid, message } = await validateEmail(email, checkout);
-    if (!isValid) {
-      setEmailError(message);
-      setMessage(message);
-      setIsLoading(false);
-      return;
-    }
-
-    const confirmResult = await checkout.confirm();
-    if (confirmResult.type === 'error') {
-      setMessage(confirmResult.error.message);
-    }
-
-    setIsLoading(false);
-  };
+    // 1) Track which step we’re on, plus whether each’s done
+    const [currentStep, setCurrentStep] = useState(1);
+    const [stepsCompleted, setStepsCompleted] = useState({
+      1: false,
+      2: false,
+      3: false,
+      4: false,
+    });
   
-  const completeStep = (step) => {
-    setStepsCompleted({...stepsCompleted, [step]: true});
-    setCurrentStep(step + 1);
-  };
+    // 2) Store the raw shippingDetails so we can send them to our API
+    const [shippingDetails, setShippingDetails] = useState(null);
   
-  const handleEditStep = (step) => {
-    setCurrentStep(step);
-  };
-
-  return (
-    <div className="max-w-4xl w-full mx-auto px-4">
-      <div className="bg-[#161414] rounded-xl shadow-xl border border-gray-800 overflow-hidden">
-        {/* Checkout header */}
-        <div className="bg-gradient-to-r from-[#2a1f2c] to-[#231b24] p-6 border-b border-gray-800">
-          <h2 className="text-3xl font-bold text-center">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#cb18db] to-[#a012b8]">Complete Your Purchase</span>
-          </h2>
-        </div>
-
-        <div className="p-6 md:p-8">
-          {/* Main checkout steps */}
-          <div className="max-w-3xl mx-auto">
-            <CheckoutStep 
-              step={1} 
-              currentStep={currentStep} 
-              title="Your Email" 
-              icon={<Mail />} 
-              isCompleted={stepsCompleted[1]}
-              onEdit={handleEditStep}
-            >
-              <EmailStep 
-                email={email} 
-                setEmail={setEmail} 
-                error={emailError} 
-                setError={setEmailError}
-                onComplete={() => completeStep(1)}
-              />
-            </CheckoutStep>
-
-            <CheckoutStep 
-              step={2} 
-              currentStep={currentStep} 
-              title="Billing Address" 
-              icon={<CreditCard />}
-              isCompleted={stepsCompleted[2]}
-              onEdit={handleEditStep}
-            >
-              <BillingAddressStep onComplete={() => completeStep(2)} />
-            </CheckoutStep>
-            
-            <CheckoutStep 
-              step={3} 
-              currentStep={currentStep} 
-              title="Shipping Address" 
-              icon={<Package />}
-              isCompleted={stepsCompleted[3]}
-              onEdit={handleEditStep}
-            >
-              <ShippingAddressStep onComplete={() => completeStep(3)} />
-            </CheckoutStep>
-            
-            {checkout?.shippingOptions?.length > 0 && (
-              <CheckoutStep 
-                step={4} 
-                currentStep={currentStep} 
-                title="Shipping Method" 
-                icon={<Truck />}
-                isCompleted={stepsCompleted[4]}
+    // 3) Helper to POST to our Next.js API route
+    const fetchShippingOptions = async (details) => {
+      try {
+        const res = await fetch('/api/calculate-shipping-options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            checkout_session_id: checkout.id,
+            shipping_details: shippingDetails,
+          }),
+        });
+        const data = await res.json();
+        if (data.type === 'error') {
+          console.error('Shipping error:', data.message);
+        }
+        // Stripe React Checkout SDK will refresh checkout.shippingOptions for you
+      } catch (err) {
+        console.error('Failed to fetch shipping options', err);
+      }
+    };
+  
+    // mark a step complete and move on
+    const completeStep = (step) => {
+      setStepsCompleted((pc) => ({ ...pc, [step]: true }));
+      setCurrentStep(step + 1);
+    };
+    const handleEditStep = (step) => setCurrentStep(step);
+  
+    // 4) When the shipping address step is done, capture details & call our API
+    const onShippingAddressComplete = async () => {
+      // the AddressElement writes into checkout.shippingDetails
+      const details = checkout.shippingDetails;
+      setShippingDetails(details);
+  
+      await fetchShippingOptions(details);
+      completeStep(2);
+    };
+  
+    return (
+      <div className="max-w-4xl w-full mx-auto px-4">
+        <div className="bg-[#161414] rounded-xl shadow-xl border border-gray-800 overflow-hidden">
+          {/* … header … */}
+          <div className="p-6 md:p-8">
+            <div className="max-w-3xl mx-auto">
+              {/* 1: Email */}
+              <CheckoutStep
+                step={1}
+                currentStep={currentStep}
+                title="Your Email"
+                icon={<Mail />}
+                isCompleted={stepsCompleted[1]}
                 onEdit={handleEditStep}
               >
-                <ShippingMethodsStep onComplete={() => completeStep(4)} />
+                <EmailStep
+                  email={checkout.email || ""}
+                  setEmail={(e) => checkout.updateEmail(e)}
+                  error={null}
+                  setError={() => {}}
+                  onComplete={() => completeStep(1)}
+                />
               </CheckoutStep>
-            )}
-            
-            <CheckoutStep 
-              step={checkout?.shippingOptions?.length > 0 ? 5 : 4} 
-              currentStep={currentStep} 
-              title="Payment" 
-              icon={<CreditCard />}
-              isCompleted={false}
-              onEdit={handleEditStep}
-            >
-              <PaymentStep 
-                isLoading={isLoading} 
-                handleSubmit={handleSubmit} 
-                message={message}
-                total={total}
-              />
-            </CheckoutStep>
+  
+              {/* 2: Shipping Address */}
+              <CheckoutStep
+                step={2}
+                currentStep={currentStep}
+                title="Shipping Address"
+                icon={<Package />}
+                isCompleted={stepsCompleted[2]}
+                onEdit={handleEditStep}
+              >
+                <ShippingAddressStep
+                  onComplete={onShippingAddressComplete}
+                  setShippingDetails={setShippingDetails}
+                />
+              </CheckoutStep>
+  
+              {/* 3: Billing Address */}
+              <CheckoutStep
+                step={3}
+                currentStep={currentStep}
+                title="Billing Address"
+                icon={<CreditCard />}
+                isCompleted={stepsCompleted[3]}
+                onEdit={handleEditStep}
+              >
+                <BillingAddressStep
+                  onComplete={() => completeStep(3)}
+                  shippingAddressData={shippingDetails}
+                />
+              </CheckoutStep>
+  
+              {/* 4: Shipping Methods (only shows after our API has run) */}
+              {checkout.shippingOptions?.length > 0 && (
+                <CheckoutStep
+                  step={4}
+                  currentStep={currentStep}
+                  title="Shipping Method"
+                  icon={<Truck />}
+                  isCompleted={stepsCompleted[4]}
+                  onEdit={handleEditStep}
+                >
+                  <ShippingMethodsStep
+                    onComplete={() => completeStep(4)}
+                    updateShipping={updateShipping}
+                  />
+                </CheckoutStep>
+              )}
+  
+              {/* final: Payment */}
+              <CheckoutStep
+                step={checkout.shippingOptions?.length > 0 ? 5 : 4}
+                currentStep={currentStep}
+                title="Payment"
+                icon={<CreditCard />}
+                isCompleted={false}
+                onEdit={handleEditStep}
+              >
+                <PaymentStep
+                  isLoading={false}
+                  handleSubmit={() => checkout.confirm()}
+                  message={null}
+                  total={checkout.total?.total?.amount}
+                />
+              </CheckoutStep>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-export default CheckoutForm;
+    );
+  };
+  
+  export default CheckoutForm;

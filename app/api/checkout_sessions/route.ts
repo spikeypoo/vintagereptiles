@@ -97,52 +97,9 @@ export async function POST(req: NextRequest, res: NextResponse) {
       shipping_options: [
         {
           shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: {
-              amount: 2500,
-              currency: "cad",
-            },
-            display_name:
-              "Canada MERCHANDISE Shipping. You will be contacted for a quote if your purchase includes a reptile",
-            delivery_estimate: {
-              minimum: { unit: "business_day", value: 1 },
-              maximum: { unit: "business_day", value: 3 },
-            },
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: {
-              amount: 0,
-              currency: "cad",
-            },
-            display_name:
-              "Canada REPTILE Shipping. You will be contacted for a shipping quote",
-            delivery_estimate: {
-              minimum: { unit: "business_day", value: 1 },
-              maximum: { unit: "business_day", value: 2 },
-            },
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: {
-              amount: 0,
-              currency: "cad",
-            },
-            display_name: "LOCAL PICKUP - Vaughan, Ontario",
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: {
-              amount: 0,
-              currency: "cad",
-            },
-            display_name: "Request a custom quote",
+            type: 'fixed_amount',
+            fixed_amount: { amount: 0, currency: 'cad' },
+            display_name: 'Calculating…',
           },
         },
       ],
@@ -151,6 +108,9 @@ export async function POST(req: NextRequest, res: NextResponse) {
       mode: "payment",
       ui_mode: "custom", // This enables embedded checkout
       return_url: `${headersList.get("origin")}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
+      permissions: {
+        update_shipping_details: 'server_only',
+      },
     });
 
     console.log(session.client_secret);
