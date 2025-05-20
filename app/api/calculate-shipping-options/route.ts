@@ -18,7 +18,7 @@ async function calculateShippingOptions(shippingDetails, session) {
   let totalWeightKg = 0
   for (const item of lineItems.data) {
     // assume each product has metadata.weight_kg
-    totalWeightKg += 1.5 * item.quantity
+    totalWeightKg += 0.5 * item.quantity
   }
 
   let postalCode = shippingDetails.address.postal_code
@@ -70,39 +70,54 @@ async function calculateShippingOptions(shippingDetails, session) {
   if (!Array.isArray(quotes)) quotes = [quotes]
 
   // 6) map each quote into Stripe shipping_options
-  return quotes.map((q, i) => {
-    const due = parseFloat(q['price-details']?.due || 0)
-    return {
-      shipping_rate_data: {
-        type: 'fixed_amount',
-        fixed_amount: { amount: Math.round(due * 100), currency: 'CAD' },
-        display_name: q['service-name'] || `Canada Post Option ${i + 1}`,
-        // you can add delivery_estimate if CP returns transit times
-      },
-    }
-  })
+  // 6) filter only "Regular Parcel" and map into Stripe shipping_option
+  const regularQuote = quotes.find(
+    (q) => q['service-name']?.includes('Regular Parcel')
+  );
+
+  if (!regularQuote) return [];
+
+  const due = parseFloat(regularQuote['price-details']?.due || 0);
+  return [{
+    shipping_rate_data: {
+      type: 'fixed_amount',
+      fixed_amount: { amount: Math.round(due * 100) + 200, currency: 'CAD' },
+      display_name: regularQuote['service-name'] || 'Canada Post - Regular Parcel',
+    },
+  }];
 }
 
 export async function POST(request) {
-  const { checkout_session_id, shipping_details } = await request.json()
+  try {
+    const { checkout_session_id, shipping_details } = await request.json();
 
-  // retrieve session
-  const session = await stripe.checkout.sessions.retrieve(checkout_session_id)
+    // retrieve session
+    const session = await stripe.checkout.sessions.retrieve(checkout_session_id);
 
-  // calculate options
-  const options = await calculateShippingOptions(shipping_details, session)
-  console.log(options)
-  if (options?.length) {
-    await stripe.checkout.sessions.update(checkout_session_id, {
-      collected_information: { shipping_details },
-      shipping_options: options,
-    })
+    // calculate options
+    const options = await calculateShippingOptions(shipping_details, session);
+    console.log('Shipping options:', options);
 
-    return NextResponse.json({ type: 'object', value: { succeeded: true } })
+    if (options?.length) {
+      await stripe.checkout.sessions.update(checkout_session_id, {
+        collected_information: { shipping_details },
+        shipping_options: options,
+      });
+
+      return NextResponse.json({ type: 'object', value: { succeeded: true } });
+    }
+
+    return NextResponse.json({
+      type: 'error',
+      message: "We can't find shipping options. Please try again.",
+    });
+
+  } catch (err) {
+    console.error('Shipping API error:', err);
+    return NextResponse.json({
+      type: 'error',
+      message: 'Internal error occurred while calculating shipping options.',
+    });
   }
-
-  return NextResponse.json({
-    type: 'error',
-    message: "We can't find shipping options. Please try again.",
-  })
 }
+

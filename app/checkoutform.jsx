@@ -232,22 +232,6 @@ const BillingAddressStep = ({ onComplete, shippingAddressData }) => {
     );
   };
 
-  const updateShippingOptions = async (shippingDetails) => {
-    const res = await fetch("/api/calculate-shipping-options", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        checkout_session_id: checkout.id,
-        shipping_details: shippingDetails,
-      }),
-    });
-    const json = await res.json();
-    if (json.type === "error") {
-      throw new Error(json.message);
-    }
-    // success: Stripe session has been updated server-side
-  };
-
   export function ShippingAddressStep({ onComplete }) {
     // 👇 pull runServerUpdate directly from the hook
     const { runServerUpdate, getShippingAddressElement, id: sessionId } = useCheckout();
@@ -501,27 +485,6 @@ const CheckoutForm = ({ updateShipping }) => {
     // 2) Store the raw shippingDetails so we can send them to our API
     const [shippingDetails, setShippingDetails] = useState(null);
   
-    // 3) Helper to POST to our Next.js API route
-    const fetchShippingOptions = async (details) => {
-      try {
-        const res = await fetch('/api/calculate-shipping-options', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            checkout_session_id: checkout.id,
-            shipping_details: shippingDetails,
-          }),
-        });
-        const data = await res.json();
-        if (data.type === 'error') {
-          console.error('Shipping error:', data.message);
-        }
-        // Stripe React Checkout SDK will refresh checkout.shippingOptions for you
-      } catch (err) {
-        console.error('Failed to fetch shipping options', err);
-      }
-    };
-  
     // mark a step complete and move on
     const completeStep = (step) => {
       setStepsCompleted((pc) => ({ ...pc, [step]: true }));
@@ -535,7 +498,6 @@ const CheckoutForm = ({ updateShipping }) => {
       const details = checkout.shippingDetails;
       setShippingDetails(details);
   
-      await fetchShippingOptions(details);
       completeStep(2);
     };
   
