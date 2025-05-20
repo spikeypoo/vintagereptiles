@@ -95,7 +95,7 @@ export default function CartDetails() {
 
       console.log("client secret: " + clientSecret);
 
-      router.push(`/checkout?clientSecret=${encodeURIComponent(clientSecret)}`);
+      router.push(`/checkout`);
     } catch (error) {
       console.error(error);
     }

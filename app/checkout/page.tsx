@@ -11,9 +11,9 @@ import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 // Keep your existing Stripe public key
-const stripePromise = loadStripe(
-  "pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB5PlJl8XcHVbTf0B0T3h7Ey7y28URqdIITb48aM9jjZ7wjuCPKKb00utiqhUVv"
-);
+const stripePromise = loadStripe('pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB5PlJl8XcHVbTf0B0T3h7Ey7y28URqdIITb48aM9jjZ7wjuCPKKb00utiqhUVv', {
+  betas: ['custom_checkout_server_updates_1'],
+});
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
@@ -26,6 +26,8 @@ export default function CheckoutPage() {
     tax: 0,
     total: 0
   });
+
+  const [isCheckoutReady, setIsCheckoutReady] = useState(false);
 
   const updateShipping = (shippingCost) => {
     setOrderData(prevData => {
@@ -141,27 +143,6 @@ export default function CheckoutPage() {
     }).format(amount);
   };
 
-  if (!clientSecret) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#1c1a1b] to-[#0f0d0e]">
-        <div className="w-20 h-20 mb-8 relative animate-pulse">
-          <Image src="/images/logo-bg.png" fill className="object-contain" alt="Vintage Reptiles" />
-        </div>
-        <div className="bg-black/30 backdrop-blur-lg rounded-2xl shadow-2xl border border-purple-900/30 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-t-2 border-[#cb18db] animate-spin"></div>
-              <div className="absolute inset-2 rounded-full border-t-2 border-[#cb18db]/50 animate-spin animation-delay-150"></div>
-              <div className="absolute inset-4 rounded-full border-t-2 border-[#cb18db]/30 animate-spin animation-delay-300"></div>
-            </div>
-            <p className="text-white text-lg mt-6 font-medium">Setting up your secure checkout...</p>
-            <p className="text-gray-400 text-sm mt-2">This will only take a moment</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Stripe appearance customization
   const appearance = {
     theme: 'night',
@@ -202,6 +183,26 @@ export default function CheckoutPage() {
 
   return (
     <div className="bg-gradient-to-br from-[#1c1a1b] to-[#0f0d0e] min-h-screen py-8 px-4">
+      {/* Loading Spinner Overlay */}
+    {!isCheckoutReady && (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/70 z-50">
+        <div className="w-20 h-20 mb-8 relative animate-pulse">
+          <Image src="/images/logo-bg.png" fill className="object-contain" alt="Vintage Reptiles" />
+        </div>
+        <div className="bg-black/30 backdrop-blur-lg rounded-2xl shadow-2xl border border-purple-900/30 p-8 max-w-md w-full">
+          <div className="flex flex-col items-center">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-t-2 border-[#cb18db] animate-spin"></div>
+              <div className="absolute inset-2 rounded-full border-t-2 border-[#cb18db]/50 animate-spin animation-delay-150"></div>
+              <div className="absolute inset-4 rounded-full border-t-2 border-[#cb18db]/30 animate-spin animation-delay-300"></div>
+            </div>
+            <p className="text-white text-lg mt-6 font-medium">Setting up your secure checkout...</p>
+            <p className="text-gray-400 text-sm mt-2">This will only take a moment</p>
+          </div>
+        </div>
+      </div>
+    )}
+
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <Link href="/cart" className="text-gray-400 hover:text-[#cb18db] transition duration-200 flex items-center group">
@@ -349,7 +350,52 @@ export default function CheckoutPage() {
             <CheckoutProvider
               stripe={stripePromise}
               options={{
-                fetchClientSecret: () => clientSecret,
+                fetchClientSecret: async () => {
+                  const rawCart = localStorage.getItem("Cart") || "{}";
+                  const holder = JSON.parse(rawCart);
+                  const details = {};
+            
+                  for (const [key, value] of Object.entries(holder)) {
+                    const usePriceID = value.chosenOptionPriceID ?? value.priceID;
+            
+                    details[key] = {
+                      product: {
+                        name: value.name,
+                        price: usePriceID,
+                        quantity: value.quantity,
+                      },
+                      stocktrack: {
+                        id: value.id,
+                        currpage: value.currpage,
+                      },
+                    };
+            
+                    details[key].chosenOption = value.chosenOption || "";
+            
+                    let colorDisplay = "";
+                    if (value.chosenColors) {
+                      if (typeof value.chosenColors === "object" && !Array.isArray(value.chosenColors)) {
+                        const arr = Object.entries(value.chosenColors).map(
+                          ([colName, colQty]) => `${colName} (${colQty})`
+                        );
+                        colorDisplay = arr.join(", ");
+                      } else if (typeof value.chosenColors === "string") {
+                        colorDisplay = value.chosenColors;
+                      }
+                    }
+                    details[key].product.colors = colorDisplay;
+                  }
+            
+                  const res = await fetch("/api/checkout_sessions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ details }),
+                  });
+            
+                  const { clientSecret } = await res.json();
+                  setIsCheckoutReady(true);
+                  return clientSecret;
+                },
                 elementsOptions: { appearance },
               }}
             >

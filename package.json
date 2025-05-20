@@ -43,7 +43,7 @@
     "react-window": "^1.8.10",
     "sharp": "^0.33.4",
     "sonner": "^2.0.3",
-    "stripe": "^16.8.0",
+    "stripe": "^18.1.0-beta.3",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
     "vercel": "^34.2.4"
