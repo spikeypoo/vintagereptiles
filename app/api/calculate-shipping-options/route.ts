@@ -91,6 +91,13 @@ async function calculateShippingOptions(shippingDetails, session) {
       fixed_amount: { amount: 0, currency: 'CAD' },
       display_name: 'Only select if your purchase includes a reptile. You will be contacted for a shipping quote.',
     },
+  },
+  {
+    shipping_rate_data: {
+      type: 'fixed_amount',
+      fixed_amount: { amount: 0, currency: 'CAD' },
+      display_name: 'Local Pickup in Vaughan, Ontario',
+    },
   }];
 }
 

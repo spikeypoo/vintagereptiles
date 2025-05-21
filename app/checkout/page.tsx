@@ -1,7 +1,7 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { CheckoutProvider } from '@stripe/react-stripe-js';
 import CheckoutForm from '../checkoutform';
@@ -15,10 +15,14 @@ const stripePromise = loadStripe('pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB
   betas: ['custom_checkout_server_updates_1'],
 });
 
-export default function CheckoutPage() {
-  const searchParams = useSearchParams();
+// Create a client component that uses useSearchParams
+function CheckoutContent() {
   const router = useRouter();
+  // Use dynamic import for useSearchParams to ensure it's only used client-side
+  const { useSearchParams } = require("next/navigation");
+  const searchParams = useSearchParams();
   const clientSecret = searchParams.get("clientSecret") || "";
+  
   const [orderData, setOrderData] = useState({
     items: [],
     subtotal: 0,
@@ -455,5 +459,21 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black/70">
+        <div className="w-16 h-16 relative animate-pulse">
+          <Image src="/images/logo-bg.png" fill className="object-contain" alt="Vintage Reptiles" />
+        </div>
+        <p className="text-white text-lg mt-4 font-medium">Loading checkout...</p>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   );
 }

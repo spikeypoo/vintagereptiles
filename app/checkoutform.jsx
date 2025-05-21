@@ -79,12 +79,21 @@ const CheckoutStep = ({
   );
 };
 
+// Here's the fixed EmailStep component - the issue is in how the email state is handled
+
 const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
   const checkout = useCheckout();
+  const [localEmail, setLocalEmail] = useState(email || "");
+  
+  useEffect(() => {
+    if (email) {
+      setLocalEmail(email);
+    }
+  }, [email]);
 
   const handleBlur = async () => {
-    if (!email) return;
-    const { isValid, message } = await validateEmail(email, checkout);
+    if (!localEmail) return;
+    const { isValid, message } = await validateEmail(localEmail, checkout);
     if (!isValid) {
       setError(message);
       return;
@@ -93,16 +102,17 @@ const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
 
   const handleChange = (e) => {
     setError(null);
+    setLocalEmail(e.target.value);
     setEmail(e.target.value);
   };
 
   const handleContinue = async () => {
-    if (!email) {
+    if (!localEmail) {
       setError("Email is required");
       return;
     }
     
-    const { isValid, message } = await validateEmail(email, checkout);
+    const { isValid, message } = await validateEmail(localEmail, checkout);
     if (!isValid) {
       setError(message);
       return;
@@ -119,7 +129,7 @@ const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
           <input
             id="email"
             type="email"
-            value={email}
+            value={localEmail}
             onChange={handleChange}
             onBlur={handleBlur}
             placeholder="Enter Email"
@@ -324,8 +334,8 @@ export const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
 
   const getEstimatedDelivery = (name) => {
     const n = name.toLowerCase();
-    if (n.includes('express')) return '1-2 Business Days';
-    if (n.includes('standard')) return '3-5 Business Days';
+    if (n.includes('reptile')) return '1-2 Business Days';
+    if (n.includes('local')) return '1-2 Business Days';
     return '2-3 Business Days';
   };
 
@@ -349,7 +359,7 @@ export const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
           </svg>
         </div>
         <h3 className="text-base sm:text-lg font-medium text-white mb-2">No Shipping Options Available</h3>
-        <p className="text-gray-400 text-sm sm:text-base">We couldn't find shipping options for your address. Please check your address or contact support.</p>
+        <p className="text-gray-400 text-sm sm:text-base">We couldn&apos;t find shipping options for your address. Please check your address or contact support.</p>
       </div>
     );
   }
@@ -487,6 +497,8 @@ const PaymentStep = ({ isLoading, handleSubmit, message, total }) => {
   );
 };
 
+// Modified CheckoutForm component with proper email state management
+
 const CheckoutForm = ({ updateShipping }) => {
   const checkout = useCheckout();
   const { session } = checkout;
@@ -500,6 +512,10 @@ const CheckoutForm = ({ updateShipping }) => {
     4: false,
   });
 
+  // Add local email state
+  const [emailValue, setEmailValue] = useState(checkout.email || "");
+  const [emailError, setEmailError] = useState(null);
+  
   // 2) Store the raw shippingDetails so we can send them to our API
   const [shippingDetails, setShippingDetails] = useState(null);
   
@@ -514,7 +530,6 @@ const CheckoutForm = ({ updateShipping }) => {
     if (step === 2) {
       updateShipping(null);
     }
-
   };
   
   // Handle editing a previous step
@@ -546,8 +561,11 @@ const CheckoutForm = ({ updateShipping }) => {
     }
   }, [currentStep, checkout.shippingOptions]);
 
-  // Creating a key for the shipping address step to force re-render
-  const shippingAddressKey = `shipping-address-${currentStep === 2 ? 'active' : 'inactive'}`;
+  // Function to update email in both local state and checkout context
+  const handleEmailUpdate = (value) => {
+    setEmailValue(value);
+    checkout.updateEmail(value);
+  };
 
   return (
     <div className="w-full mx-auto px-3 sm:px-4">
@@ -564,15 +582,15 @@ const CheckoutForm = ({ updateShipping }) => {
               onEdit={handleEditStep}
             >
               <EmailStep
-                email={checkout.email || ""}
-                setEmail={(e) => checkout.updateEmail(e)}
-                error={null}
-                setError={() => {}}
+                email={emailValue}
+                setEmail={handleEmailUpdate}
+                error={emailError}
+                setError={setEmailError}
                 onComplete={() => completeStep(1)}
               />
             </CheckoutStep>
 
-            {/* 2: Shipping Address - with key to force re-render */}
+            {/* 2: Shipping Address */}
             <CheckoutStep
               step={2}
               currentStep={currentStep}
