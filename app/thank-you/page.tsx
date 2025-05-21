@@ -10,7 +10,7 @@ import { useEffect } from 'react'
 export default function Home() {
   useEffect(() => {
     // Clear cart-related localStorage
-    localStorage.removeItem("Cnpart");
+    localStorage.removeItem("Cart");
     localStorage.removeItem("checkoutData");
   }, []);
 
