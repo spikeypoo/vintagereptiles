@@ -107,7 +107,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
       line_items: lineItems,
       mode: "payment",
       ui_mode: "custom", // This enables embedded checkout
-      return_url: `${headersList.get("origin")}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
+      return_url: `${headersList.get("origin")}/thank-you`,
       permissions: {
         update_shipping_details: 'server_only',
       },

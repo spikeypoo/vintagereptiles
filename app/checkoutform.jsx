@@ -522,6 +522,20 @@ const CheckoutForm = ({ updateShipping }) => {
   // Track loading state for shipping options
   const [loadingShippingOptions, setLoadingShippingOptions] = useState(false);
 
+  const [shouldRenderShipping, setShouldRenderShipping] = useState(true);
+
+  // Watch for step changes to unmount after animation
+  useEffect(() => {
+    if (currentStep !== 2) {
+      // delay unmounting until after animation (500ms matches the duration in CheckoutStep)
+      const timer = setTimeout(() => setShouldRenderShipping(false), 500);
+      return () => clearTimeout(timer);
+    } else {
+      setShouldRenderShipping(true); // remount if returning to step 2
+    }
+  }, [currentStep]);
+
+
   // mark a step complete and move on
   const completeStep = (step) => {
     setStepsCompleted((pc) => ({ ...pc, [step]: true }));
@@ -599,12 +613,16 @@ const CheckoutForm = ({ updateShipping }) => {
               isCompleted={stepsCompleted[2]}
               onEdit={handleEditStep}
             >
-              <ShippingAddressStep
-                onComplete={onShippingAddressComplete}
-                active={currentStep === 2}
-              />
+              {shouldRenderShipping && (
+                <ShippingAddressStep
+                  onComplete={onShippingAddressComplete}
+                  active={currentStep === 2}
+                />
+              )}
             </CheckoutStep>
 
+
+            
             {/* 3: Billing Address */}
             <CheckoutStep
               step={3}
@@ -619,6 +637,7 @@ const CheckoutForm = ({ updateShipping }) => {
                 shippingAddressData={shippingDetails}
               />
             </CheckoutStep>
+            
 
             {/* 4: Shipping Methods */}
             <CheckoutStep
