@@ -8,6 +8,13 @@ import { useState } from 'react'
 import { useEffect } from 'react'
 
 export default function Home() {
+  useEffect(() => {
+    // Clear cart-related localStorage
+    localStorage.removeItem("Cart");
+    localStorage.removeItem("checkoutData");
+  }, []);
+
+
   return (
     <div className="mb-[100px]">
       <div className="text-center text-white text-xl flex justify-center pt-[90px]">
