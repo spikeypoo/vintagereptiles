@@ -314,6 +314,7 @@ export default function PageDetails({ params }: { params: Promise<{ pages: strin
                 params={params}
                 stock={element.stock}
                 pages={pages}
+                customOptions={element.customOptions}
               />
             ))}
           </div>
@@ -352,10 +353,11 @@ export default function PageDetails({ params }: { params: Promise<{ pages: strin
   );
 }
 
-const Card = ({ index, name, price, image1, issale, oldprice, id, params, stock, pages}) => {
+const Card = ({ index, name, price, image1, issale, oldprice, id, params, stock, pages, customOptions }) => {
   const [hovering, setHovering] = useState(false);
   const toListing = "/shop/" + pages + "/" + pages + "-" + id;
   const isOutOfStock = parseInt(stock) <= 0;
+  const hasOptions = customOptions && customOptions.length > 0;
 
   return (
     <div 
@@ -404,14 +406,21 @@ const Card = ({ index, name, price, image1, issale, oldprice, id, params, stock,
         <div className="p-4">
           <h3 className="text-white font-medium text-lg text-center truncate">{name}</h3>
           
-          <div className="mt-2 flex justify-center items-center">
-            {issale === "true" ? (
-              <div className="flex items-center">
-                <span className="text-red-500 font-bold text-lg">${parseFloat(price).toFixed(2)}</span>
-                <span className="text-gray-400 line-through text-sm ml-2">${parseFloat(oldprice).toFixed(2)}</span>
-              </div>
+          <div className="mt-2 flex flex-col items-center">
+            {hasOptions ? (
+              <>
+                <span className="text-white font-bold text-lg">From ${parseFloat(price).toFixed(2)}</span>
+                <span className="text-gray-400 text-sm">{customOptions.length} options available</span>
+              </>
             ) : (
-              price !== "" && <span className="text-white font-bold text-lg">${parseFloat(price).toFixed(2)}</span>
+              issale === "true" ? (
+                <div className="flex items-center">
+                  <span className="text-red-500 font-bold text-lg">${parseFloat(price).toFixed(2)}</span>
+                  <span className="text-gray-400 line-through text-sm ml-2">${parseFloat(oldprice).toFixed(2)}</span>
+                </div>
+              ) : (
+                price !== "" && <span className="text-white font-bold text-lg">${parseFloat(price).toFixed(2)}</span>
+              )
             )}
           </div>
         </div>

@@ -366,7 +366,7 @@ export default function ListingDetails({ params }) {
                     <div className="flex items-center">
                       <span className={`text-2xl font-bold ${listingData.issale === "true" ? "text-red-500" : "text-white"}`}>
                         {hasMultipleOptions && !selectedOption 
-                          ? `Starting from $${getMinOptionPrice()}`
+                          ? `$${getMinOptionPrice()}`
                           : `$${displayPrice()}`
                         }
                       </span>
