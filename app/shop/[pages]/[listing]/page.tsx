@@ -61,6 +61,17 @@ export default function ListingDetails({ params }) {
     fetchData();
   }, [id, page]);
 
+  // Find the minimum price from all options
+  const getMinOptionPrice = () => {
+    if (!Array.isArray(listingData.customOptions) || listingData.customOptions.length === 0) {
+      return parseFloat(listingData.price).toFixed(2);
+    }
+    
+    const prices = listingData.customOptions.map(opt => parseFloat(opt.price || 0));
+    return Math.min(...prices).toFixed(2);
+  };
+
+  // Display the selected option's price or the base price
   const displayPrice = () => {
     if (selectedOption && Array.isArray(listingData.customOptions)) {
       const opt = listingData.customOptions.find(o => o.label === selectedOption);
@@ -69,6 +80,8 @@ export default function ListingDetails({ params }) {
     return parseFloat(listingData.price).toFixed(2);
   };
   
+  // Check if we have multiple options
+  const hasMultipleOptions = Array.isArray(listingData.customOptions) && listingData.customOptions.length > 0;
 
   // Build array of images (filter out empty if needed)
   const images = Array.isArray(listingData.images)
@@ -117,7 +130,7 @@ export default function ListingDetails({ params }) {
       const mainImage = images[0] || "";
 
       // always store both the display price *and* the Stripe Price ID
-      const entry: any = {
+      const entry = {
         name:        listingData.name,
         price:       displayPrice(),        // string or number
         priceID:     listingData.priceid,   // fallback
@@ -349,14 +362,26 @@ export default function ListingDetails({ params }) {
               
               <div className="flex items-center mb-2">
                 {listingData.price !== "" && (
-                  <div className="flex items-center">
-                    <span className={`text-2xl font-bold ${listingData.issale === "true" ? "text-red-500" : "text-white"}`}>
-                        ${displayPrice()}
-                    </span>
+                  <div className="flex flex-col">
+                    <div className="flex items-center">
+                      <span className={`text-2xl font-bold ${listingData.issale === "true" ? "text-red-500" : "text-white"}`}>
+                        {hasMultipleOptions && !selectedOption 
+                          ? `Starting from $${getMinOptionPrice()}`
+                          : `$${displayPrice()}`
+                        }
+                      </span>
+                      
+                      {listingData.issale === "true" && (
+                        <span className="text-gray-400 line-through text-lg ml-3">
+                          ${parseFloat(listingData.oldprice).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                     
-                    {listingData.issale === "true" && (
-                      <span className="text-gray-400 line-through text-lg ml-3">
-                        ${parseFloat(listingData.oldprice).toFixed(2)}
+                    {/* Show options count if multiple options exist */}
+                    {hasMultipleOptions && (
+                      <span className="text-sm text-gray-300 mt-1">
+                        {listingData.customOptions.length} options available
                       </span>
                     )}
                   </div>
@@ -385,7 +410,7 @@ export default function ListingDetails({ params }) {
             </div>
 
             {/* Custom Options Dropdown */}
-            {Array.isArray(listingData.customOptions) && listingData.customOptions.length > 0 && (
+            {hasMultipleOptions && (
               <div className="mb-6">
                 <label className="block mb-2 text-white font-medium">
                   Select Option
@@ -485,13 +510,13 @@ export default function ListingDetails({ params }) {
             <button
                 className={`flex items-center justify-center gap-2 font-bold text-white bg-[#cb18db] w-full sm:w-auto px-8 py-3 rounded-full text-lg transition-all duration-300
                 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#a814b6]'}
-                ${((currPage === "prints" && selectedColor === "") || (Array.isArray(listingData.customOptions) && listingData.customOptions.length > 0 && !selectedOption)) ? 'opacity-50 cursor-not-allowed' : ''}
+                ${((currPage === "prints" && selectedColor === "") || (hasMultipleOptions && !selectedOption)) ? 'opacity-50 cursor-not-allowed' : ''}
                 ${addingToCart ? 'animate-pulse' : ''}`}
                 onClick={handleAdd}
                 disabled={
                   isOutOfStock || 
                   (currPage === "prints" && selectedColor === "") || 
-                  (Array.isArray(listingData.customOptions) && listingData.customOptions.length > 0 && !selectedOption) ||
+                  (hasMultipleOptions && !selectedOption) ||
                   addingToCart
                 }
               >

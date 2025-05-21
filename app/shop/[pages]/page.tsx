@@ -195,13 +195,19 @@ export default function PageDetails({ params }: { params: Promise<{ pages: strin
             
             {/* Sort dropdown */}
             <div className="relative" ref={sortMenuRef}>
-              <button
-                onClick={() => setShowSortMenu(!showSortMenu)}
-                className="flex items-center justify-between bg-[#1c1a1b] text-white px-4 py-2 rounded-lg w-full md:w-48 hover:bg-[#2a2829] transition duration-200"
-              >
-                <span>Sort by: {sortOptions.find(option => option.value === sortOption)?.label}</span>
-                <ChevronDown size={16} className={`ml-2 transition-transform duration-200 ${showSortMenu ? 'rotate-180' : ''}`} />
-              </button>
+            <button
+              onClick={() => setShowSortMenu(!showSortMenu)}
+              className="flex items-center justify-between bg-[#1c1a1b] text-white px-4 py-2 rounded-lg w-56 flex-shrink-0 overflow-hidden hover:bg-[#2a2829] transition duration-200"
+            >
+              <span className="truncate">
+                Sort by: {sortOptions.find(o => o.value === sortOption)?.label}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`ml-2 transition-transform duration-200 ${showSortMenu ? 'rotate-180' : ''}`}
+              />
+            </button>
+
               
               {showSortMenu && (
                 <div className="absolute z-50 mt-2 w-full md:w-48 bg-[#242122] border border-[#3a3839] rounded-lg shadow-xl">

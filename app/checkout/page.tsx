@@ -7,7 +7,7 @@ import { CheckoutProvider } from '@stripe/react-stripe-js';
 import CheckoutForm from '../checkoutform';
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ShoppingCart, ChevronDown, ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 // Keep your existing Stripe public key
@@ -28,10 +28,11 @@ export default function CheckoutPage() {
   });
 
   const [isCheckoutReady, setIsCheckoutReady] = useState(false);
+  const [showOrderSummary, setShowOrderSummary] = useState(false);
 
   const updateShipping = (shippingCost) => {
     setOrderData(prevData => {
-      const newTotal = prevData.subtotal + + shippingCost;
+      const newTotal = prevData.subtotal + shippingCost;
       return {
         ...prevData,
         shipping: shippingCost,
@@ -134,6 +135,22 @@ export default function CheckoutPage() {
     }
   }, []);
 
+  // Auto-show summary on desktop, hide on mobile by default
+  useEffect(() => {
+    const handleResize = () => {
+      setShowOrderSummary(window.innerWidth >= 1024);
+    };
+
+    // Set initial state
+    handleResize();
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Clean up
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Format currency
   const formatPrice = (amount, currency = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -182,171 +199,69 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#1c1a1b] to-[#0f0d0e] min-h-screen py-8 px-4">
+    <div className="min-h-screen py-4 sm:py-8 px-3 sm:px-4">
       {/* Loading Spinner Overlay */}
-    {!isCheckoutReady && (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/70 z-50">
-        <div className="w-20 h-20 mb-8 relative animate-pulse">
-          <Image src="/images/logo-bg.png" fill className="object-contain" alt="Vintage Reptiles" />
-        </div>
-        <div className="bg-black/30 backdrop-blur-lg rounded-2xl shadow-2xl border border-purple-900/30 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-t-2 border-[#cb18db] animate-spin"></div>
-              <div className="absolute inset-2 rounded-full border-t-2 border-[#cb18db]/50 animate-spin animation-delay-150"></div>
-              <div className="absolute inset-4 rounded-full border-t-2 border-[#cb18db]/30 animate-spin animation-delay-300"></div>
+      {!isCheckoutReady && (
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/70 z-50">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 mb-6 sm:mb-8 relative animate-pulse">
+            <Image src="/images/logo-bg.png" fill className="object-contain" alt="Vintage Reptiles" />
+          </div>
+          <div className="bg-black/30 backdrop-blur-lg rounded-xl sm:rounded-2xl shadow-2xl border border-purple-900/30 p-5 sm:p-8 max-w-md w-full mx-3">
+            <div className="flex flex-col items-center">
+              <div className="relative w-12 h-12 sm:w-16 sm:h-16">
+                <div className="absolute inset-0 rounded-full border-t-2 border-[#cb18db] animate-spin"></div>
+                <div className="absolute inset-2 rounded-full border-t-2 border-[#cb18db]/50 animate-spin animation-delay-150"></div>
+                <div className="absolute inset-4 rounded-full border-t-2 border-[#cb18db]/30 animate-spin animation-delay-300"></div>
+              </div>
+              <p className="text-white text-base sm:text-lg mt-5 sm:mt-6 font-medium text-center">Setting up your secure checkout...</p>
+              <p className="text-gray-400 text-xs sm:text-sm mt-2 text-center">This will only take a moment</p>
             </div>
-            <p className="text-white text-lg mt-6 font-medium">Setting up your secure checkout...</p>
-            <p className="text-gray-400 text-sm mt-2">This will only take a moment</p>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-5 sm:mb-8 flex items-center justify-between">
           <Link href="/cart" className="text-gray-400 hover:text-[#cb18db] transition duration-200 flex items-center group">
-            <div className="bg-black/30 backdrop-blur-sm p-2 rounded-full mr-3 group-hover:bg-[#cb18db]/20 transition-all duration-300">
-              <ArrowLeft className="h-5 w-5" />
+            <div className="bg-black/30 backdrop-blur-sm p-1.5 sm:p-2 rounded-full mr-2 sm:mr-3 group-hover:bg-[#cb18db]/20 transition-all duration-300">
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <span>Back to Cart</span>
+            <span className="text-sm sm:text-base">Back to Cart</span>
           </Link>
           
           <div className="flex items-center">
             <Image 
               src="/images/logo-bg.png" 
-              width={36} 
-              height={36} 
+              width={30} 
+              height={30} 
               alt="Vintage Reptiles" 
-              className="mr-3"
+              className="w-7 h-7 sm:w-9 sm:h-9 mr-2 sm:mr-3"
             />
-            <span className="text-white font-semibold">Vintage Reptiles</span>
+            <span className="text-white text-sm sm:text-base font-semibold">Vintage Reptiles</span>
           </div>
         </div>
-      
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Order Summary Section */}
-          <div className="lg:col-span-4 lg:order-2">
-            <div className="sticky top-8">
-              <div className="bg-black/30 backdrop-blur-md rounded-2xl shadow-xl border border-purple-900/20 overflow-hidden">
-                <div className="bg-gradient-to-r from-[#2a1f2c] to-[#231b24] p-4 border-b border-purple-900/30">
-                  <div className="flex items-center">
-                    <ShoppingCart className="w-5 h-5 mr-2 text-[#cb18db]" />
-                    <h3 className="text-xl font-bold text-white">Order Summary</h3>
-                  </div>
-                </div>
-                
-                <div className="p-6">
-                  {/* Items list */}
-                  <div className="space-y-4 mb-6 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#cb18db]/30 scrollbar-track-gray-800/20">
-                    {orderData.items.map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4 pb-4 border-b border-gray-800/50">
-                        <div className="relative h-16 w-16 rounded-lg bg-gray-900 overflow-hidden flex-shrink-0">
-                          {item.image ? (
-                            <Image 
-                              src={item.image} 
-                              fill 
-                              className="object-cover" 
-                              alt={item.name} 
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                              <span className="text-sm text-gray-500">No image</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-white font-medium text-sm truncate">{item.name}</h4>
-                          {item.variant && (
-                            <p className="text-gray-400 text-xs mt-1">{item.variant}</p>
-                          )}
-                          <div className="flex justify-between mt-2">
-                            <span className="text-gray-300 text-sm">Qty: {item.quantity}</span>
-                            <motion.span 
-                              key={`${item.id}-price-${item.price * item.quantity}`}
-                              initial={{ opacity: 0, y: -5 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="text-white font-medium"
-                            >
-                              {formatPrice(item.price * item.quantity)}
-                            </motion.span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Order totals */}
-                  <div className="space-y-3 py-4 border-t border-gray-800/50">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Subtotal</span>
-                      <motion.span 
-                        key={`subtotal-${orderData.subtotal}`}
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-white"
-                      >
-                        {formatPrice(orderData.subtotal)}
-                      </motion.span>
-                    </div>
-                    
-                    {/* Shipping Row - Only shown when shipping is not null */}
-                    <AnimatePresence>
-                      {orderData.shipping !== null && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="flex justify-between overflow-hidden"
-                        >
-                          <span className="text-gray-400">Shipping</span>
-                          <motion.span 
-                            key={`shipping-${orderData.shipping}`}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-white"
-                          >
-                            {orderData.shipping === 0 ? 'Free' : formatPrice(orderData.shipping)}
-                          </motion.span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    
-                    <div className="flex justify-between pt-4 border-t border-gray-800">
-                      <span className="text-white font-semibold">Total</span>
-                      <motion.span 
-                        key={`total-${orderData.total}`}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                        className="text-xl font-bold text-[#cb18db]"
-                      >
-                        {formatPrice(orderData.total)}
-                      </motion.span>
-                    </div>
-                  </div>
-                  
-                  {/* Trust badges */}
-                  <div className="mt-6 pt-6 border-t border-gray-800/50">
-                    <div className="flex flex-wrap justify-center gap-4">
-                      <div className="flex items-center text-gray-400 text-xs">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                        </svg>
-                        Secure Checkout
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+
+        {/* Mobile Order Summary Toggle */}
+        <div className="lg:hidden mb-4">
+          <button 
+            onClick={() => setShowOrderSummary(!showOrderSummary)}
+            className="w-full flex items-center justify-between bg-black/30 backdrop-blur-md rounded-xl py-3 px-4 text-white font-medium border border-purple-900/20"
+          >
+            <div className="flex items-center">
+              <ShoppingCart className="w-4 h-4 mr-2 text-[#cb18db]" />
+              <span>Order Summary</span>
+              <span className="ml-2 text-[#cb18db] font-semibold">{formatPrice(orderData.total)}</span>
             </div>
-          </div>
-          
-          {/* Checkout Form Section */}
-          <div className="lg:col-span-8 lg:order-1">
+            {showOrderSummary ? 
+              <ChevronUp className="w-5 h-5 text-gray-400" /> : 
+              <ChevronDown className="w-5 h-5 text-gray-400" />
+            }
+          </button>
+        </div>
+      
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
+          {/* Checkout Form Section - Reversed order on mobile */}
+          <div className="lg:col-span-8 lg:order-1 order-2">
             <CheckoutProvider
               stripe={stripePromise}
               options={{
@@ -404,6 +319,138 @@ export default function CheckoutPage() {
                 updateShipping={updateShipping} 
               />
             </CheckoutProvider>
+          </div>
+          
+          {/* Order Summary Section */}
+          <div className="lg:col-span-4 lg:order-2 order-1">
+            <AnimatePresence>
+              {showOrderSummary && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden"
+                >
+                  <div className="lg:sticky lg:top-8">
+                    <div className="bg-black/30 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-purple-900/20 overflow-hidden mb-5 lg:mb-0">
+                      <div className="bg-gradient-to-r from-[#2a1f2c] to-[#231b24] p-3 sm:p-4 border-b border-purple-900/30">
+                        <div className="flex items-center">
+                          <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-[#cb18db]" />
+                          <h3 className="text-lg sm:text-xl font-bold text-white">Order Summary</h3>
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 sm:p-6">
+                        {/* Items list */}
+                        <div className="space-y-3 sm:space-y-4 mb-5 sm:mb-6 max-h-60 sm:max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#cb18db]/30 scrollbar-track-gray-800/20">
+                          {orderData.items.map((item) => (
+                            <div key={item.id} className="flex items-center space-x-3 sm:space-x-4 pb-3 sm:pb-4 border-b border-gray-800/50">
+                              <div className="relative h-12 w-12 sm:h-16 sm:w-16 rounded-lg bg-gray-900 overflow-hidden flex-shrink-0">
+                                {item.image ? (
+                                  <Image 
+                                    src={item.image} 
+                                    fill 
+                                    className="object-cover" 
+                                    alt={item.name} 
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                                    <span className="text-xs sm:text-sm text-gray-500">No image</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-medium text-xs sm:text-sm truncate">{item.name}</h4>
+                                {item.variant && (
+                                  <p className="text-gray-400 text-xs mt-0.5 sm:mt-1 line-clamp-1">{item.variant}</p>
+                                )}
+                                <div className="flex justify-between mt-1 sm:mt-2">
+                                  <span className="text-gray-300 text-xs sm:text-sm">Qty: {item.quantity}</span>
+                                  <motion.span 
+                                    key={`${item.id}-price-${item.price * item.quantity}`}
+                                    initial={{ opacity: 0, y: -5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="text-white text-xs sm:text-sm font-medium"
+                                  >
+                                    {formatPrice(item.price * item.quantity)}
+                                  </motion.span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Order totals */}
+                        <div className="space-y-2 sm:space-y-3 py-3 sm:py-4 border-t border-gray-800/50">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">Subtotal</span>
+                            <motion.span 
+                              key={`subtotal-${orderData.subtotal}`}
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="text-white text-sm"
+                            >
+                              {formatPrice(orderData.subtotal)}
+                            </motion.span>
+                          </div>
+                          
+                          {/* Shipping Row - Only shown when shipping is not null */}
+                          <AnimatePresence>
+                            {orderData.shipping !== null && (
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="flex justify-between overflow-hidden"
+                              >
+                                <span className="text-gray-400 text-sm">Shipping</span>
+                                <motion.span 
+                                  key={`shipping-${orderData.shipping}`}
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: 0.1 }}
+                                  className="text-white text-sm"
+                                >
+                                  {orderData.shipping === 0 ? 'Free' : formatPrice(orderData.shipping)}
+                                </motion.span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          
+                          <div className="flex justify-between pt-3 sm:pt-4 border-t border-gray-800">
+                            <span className="text-white font-semibold">Total</span>
+                            <motion.span 
+                              key={`total-${orderData.total}`}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                              className="text-lg sm:text-xl font-bold text-[#cb18db]"
+                            >
+                              {formatPrice(orderData.total)}
+                            </motion.span>
+                          </div>
+                        </div>
+                        
+                        {/* Trust badges */}
+                        <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-800/50">
+                          <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+                            <div className="flex items-center text-gray-400 text-xs">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 mr-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                              Secure Checkout
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

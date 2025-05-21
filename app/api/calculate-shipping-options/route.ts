@@ -84,6 +84,13 @@ async function calculateShippingOptions(shippingDetails, session) {
       fixed_amount: { amount: Math.round(due * 100) + 200, currency: 'CAD' },
       display_name: regularQuote['service-name'] || 'Canada Post - Regular Parcel',
     },
+  }, 
+  {
+    shipping_rate_data: {
+      type: 'fixed_amount',
+      fixed_amount: { amount: 0, currency: 'CAD' },
+      display_name: 'Only select if your purchase includes a reptile. You will be contacted for a shipping quote.',
+    },
   }];
 }
 
