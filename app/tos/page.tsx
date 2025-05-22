@@ -18,7 +18,7 @@ export default function Home() {
           Shipping within Canada only<br/><br/></div>
 
           <br/><div className="font-bold text-3xl text-[#cb18db]">Geckos</div>
-          <div className="italic font-bold pt-[10px]">Updated April 16th 2025<br/><br/></div>
+          <div className="italic font-bold pt-[10px]">Updated May 21st 2025<br/><br/></div>
           <div className="w-[100%] bg-white h-[1px]"></div><br/>
 
           When purchasing a gecko from Vintage Reptiles you are acknowledging that you have read, understood and agree to the TOS. The TOS is in place to protect potential buyers and myself. Vintage Reptiles reserves the right to refuse service to anyone.
@@ -26,10 +26,11 @@ export default function Home() {
 
           <div className="font-bold text-2xl pb-[10px]">Payment Plans<br/></div>
 
-          When purchasing a gecko a 35% non-refundable deposit will be used to hold your gecko<br/>
-          Geckos $150 and under must be paid in full<br/>
-          30-60 day payment plans are available upon request<br/>
-          When the gecko has been paid in full it can be picked up/shipped out to the buyer. Payments can be made in the form of e-transfer or cash.<br/><br/>
+          When purchasing a gecko a 35% non-refundable deposit will be used to hold your gecko.<br/>
+          Geckos $150 and under must be paid in full.<br/>
+          Geckos up to $599 must be paid off within 30 days.<br/>
+          Geckos $600 and over must be paid within 60 days.<br/>
+          When the gecko has been paid in full it can be picked up/shipped out to the buyer. Payments can be made in the form of e-transfer, cash or Afterpay through my website.<br/><br/>
 
           In the event the buyer fails to provide full payment on a gecko by the end of the agreed upon date or fails to keep in regular communication regarding the plan, no refunds will be given and the gecko will be taken off hold. Reminders will be sent but if there is no response then you lose your gecko and funds.
           <br/><br/>
@@ -108,7 +109,7 @@ export default function Home() {
 
           <br/><br/><br/>
           <div className="font-bold text-3xl text-[#cb18db]">3D Prints</div>
-          <div className="italic font-bold pt-[10px]">Updated April 16th 2025<br/><br/></div>
+          <div className="italic font-bold pt-[10px]">Updated May 21st 2025<br/><br/></div>
           <div className="w-[100%] bg-white h-[1px]"></div><br/>
 
           <div className="font-bold text-2xl pb-[10px]">General Information</div>
@@ -120,6 +121,12 @@ export default function Home() {
           <div className="font-bold text-2xl pb-[10px]">Pickup/Shipping</div>
 
           Pickups are welcome in Vaughan or occasionally at Reptile Expos. <br/>Shipping is available at the buyer&apos;s expense.<br/>You can request a quote or choose the fixed shipping option at checkout.
+          
+          <br></br><br></br>
+
+          <div className="font-bold text-2xl pb-[10px]">Payment Plans</div>
+
+          Payments plans are available on orders over $150.<br/>A 35% deposit is required before your order can be made.<br/>We offer 30 day payment plans for our 3D prints.
           
           <br></br><br></br>
 

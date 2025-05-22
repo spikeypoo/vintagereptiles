@@ -21,13 +21,9 @@ export default function Home() {
           <br></br>
           Vintage Reptiles is based in Vaughan, Ontario, Canada.
 
-          <br /><br />I am a small scale breeder focusing on crested geckos, gargoyle geckos and tropical plants. I currently only offer shipping across Canada.
+          <br /><br />I am a small scale breeder focusing on New Caledonian geckos, isopods, and 3D prints. I currently only offer shipping across Canada.
 
-          <br /><br />I’ve been a part of the reptile hobby for 10 years and have been breeding for 4 of those years!
-
-          <br /><br />All inquiries will go through my Instagram page <a href="https://www.instagram.com/vintage_reptiles/" className="text-[#cb18db]">@vintage_reptiles</a> as I like to talk to the people who are interested in buying my geckos and plants.
-
-          <br /><br />Please read my Terms of Service before making a purchase! My DMs are always open to questions and inquiries.
+          <br /><br />Please read my Terms of Service before making a purchase. You can contact me through my Instagram page <a href="https://www.instagram.com/vintage_reptiles/" className="text-[#cb18db]">@vintage_reptiles</a> or through my email <span className="text-[#cb18db]">shop@vintagereptiles.com</span>. My DMs are always open to questions and inquiries!
         </div>
       </div>
     </div>
