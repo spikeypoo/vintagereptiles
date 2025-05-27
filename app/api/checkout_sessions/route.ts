@@ -19,6 +19,20 @@ export async function POST(req: NextRequest, res: NextResponse) {
     "prod_RztCIunfFd9dnv",
     "prod_RztC8a7cL6Pv2L",
     "prod_SCLs3mv4vbqs76",
+    "prod_SMneIxE8hGSN2n",
+    "prod_SMnctTkG1EN6er",
+    "prod_SKASjfjCK6sXDX",
+    "prod_SJpFyNEorWO0Bk",
+    "prod_SJnDwKP63LzZ96",
+    "prod_SHsalw5YhR1lQ1",
+    "prod_SHsZi6N6vXm8Sg",
+    "prod_SGQyc87Kq0t3VK",
+    "prod_SGQrAVwUa6mIj7",
+    "prod_SD7ugRIQ13WbIr",
+    "prod_RKn2lMpnfXyxw3",
+    "prod_Qw0g6pDBQoDUl3",
+    "prod_QsZlszGPRpDInS",
+    "prod_QsZll9iTxdqVcO",
   ]);
 
   // Validate stock

@@ -7,13 +7,30 @@ import { CheckoutProvider } from '@stripe/react-stripe-js';
 import CheckoutForm from '../checkoutform';
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ShoppingCart, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ShoppingCart, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 // Keep your existing Stripe public key
 const stripePromise = loadStripe('pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB5PlJl8XcHVbTf0B0T3h7Ey7y28URqdIITb48aM9jjZ7wjuCPKKb00utiqhUVv', {
   betas: ['custom_checkout_server_updates_1'],
 });
+
+// Function to check if item is from 3D print section
+const isFrom3DPrintSection = (item) => {
+  // Check if the item has currpage property indicating 3D print section
+  return item.currpage === 'prints';
+};
+
+// Function to calculate bulk discount for 3D print items
+const calculateBulkDiscount = (quantity, item) => {
+  if (!isFrom3DPrintSection(item)) return 0;
+  
+  if (quantity >= 30) return 0.20;
+  else if (quantity >= 20) return 0.15;
+  else if (quantity >= 10) return 0.10;
+  
+  return 0;
+};
 
 // Create a client component that uses useSearchParams
 function CheckoutContent() {
@@ -26,6 +43,8 @@ function CheckoutContent() {
   const [orderData, setOrderData] = useState({
     items: [],
     subtotal: 0,
+    originalSubtotal: 0,
+    totalDiscount: 0,
     shipping: null,
     tax: 0,
     total: 0
@@ -57,13 +76,25 @@ function CheckoutContent() {
         
         // Format cart items
         const cartItems = [];
-        let subtotal = 0;
+        let originalSubtotal = 0;
+        let subtotalWithDiscounts = 0;
+        let totalDiscount = 0;
         
         // Process each item in the cart
         for (const [key, value] of Object.entries(cartData)) {
-          // Calculate item total
-          const itemTotal = value.price * value.quantity;
-          subtotal += itemTotal;
+          const originalPrice = parseFloat(value.price);
+          const quantity = value.quantity;
+          const originalItemTotal = originalPrice * quantity;
+          originalSubtotal += originalItemTotal;
+          
+          // Calculate bulk discount for this item (check if it's from 3D print section)
+          const discountRate = calculateBulkDiscount(quantity, value);
+          const discountedPrice = discountRate > 0 ? originalPrice * (1 - discountRate) : originalPrice;
+          const discountedItemTotal = discountedPrice * quantity;
+          const itemDiscount = originalItemTotal - discountedItemTotal;
+          
+          subtotalWithDiscounts += discountedItemTotal;
+          totalDiscount += itemDiscount;
           
           // Format variant information
           let variant = "";
@@ -103,12 +134,18 @@ function CheckoutContent() {
           const item = {
             id: key,
             name: value.name,
-            price: parseFloat(value.price),
-            quantity: value.quantity,
+            originalPrice: originalPrice,
+            discountedPrice: discountedPrice,
+            quantity: quantity,
             image: imageUrl,
             variant: variant,
             priceID: value.priceID,
-            chosenOptionPriceID: value.chosenOptionPriceID
+            chosenOptionPriceID: value.chosenOptionPriceID,
+            discountRate: discountRate,
+            currpage: value.currpage,
+            originalTotal: originalItemTotal,
+            discountedTotal: discountedItemTotal,
+            itemDiscount: itemDiscount
           };
           
           cartItems.push(item);
@@ -116,18 +153,20 @@ function CheckoutContent() {
         
         // Calculate tax (example: 7% tax rate)
         const taxRate = 0.07;
-        const tax = subtotal * taxRate;
+        const tax = subtotalWithDiscounts * taxRate;
         
         // Set shipping to null initially (will be set by CheckoutForm)
         const shipping = null;
         
-        // Calculate total without shipping initially
-        const total = subtotal;
+        // Calculate total with discounted subtotal
+        const total = subtotalWithDiscounts;
         
         // Update order data
         setOrderData({
           items: cartItems,
-          subtotal,
+          subtotal: subtotalWithDiscounts,
+          originalSubtotal: originalSubtotal,
+          totalDiscount: totalDiscount,
           shipping,
           tax,
           total
@@ -156,8 +195,8 @@ function CheckoutContent() {
   }, []);
 
   // Format currency
-  const formatPrice = (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
+  const formatPrice = (amount, currency = 'CAD') => {
+    return new Intl.NumberFormat('en-CA', {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 2
@@ -370,16 +409,45 @@ function CheckoutContent() {
                                 {item.variant && (
                                   <p className="text-gray-400 text-xs mt-0.5 sm:mt-1 line-clamp-1">{item.variant}</p>
                                 )}
+                                
+                                {/* Bulk discount indicator */}
+                                {item.discountRate > 0 && (
+                                  <div className="flex items-center mt-1">
+                                    <Tag className="w-3 h-3 text-green-400 mr-1" />
+                                    <span className="text-green-400 text-xs font-medium">
+                                      {Math.round(item.discountRate * 100)}% bulk discount
+                                    </span>
+                                  </div>
+                                )}
+                                
                                 <div className="flex justify-between mt-1 sm:mt-2">
                                   <span className="text-gray-300 text-xs sm:text-sm">Qty: {item.quantity}</span>
-                                  <motion.span 
-                                    key={`${item.id}-price-${item.price * item.quantity}`}
-                                    initial={{ opacity: 0, y: -5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="text-white text-xs sm:text-sm font-medium"
-                                  >
-                                    {formatPrice(item.price * item.quantity)}
-                                  </motion.span>
+                                  <div className="text-right">
+                                    {item.discountRate > 0 ? (
+                                      <div className="flex flex-col items-end">
+                                        <span className="text-gray-400 text-xs line-through">
+                                          {formatPrice(item.originalTotal)}
+                                        </span>
+                                        <motion.span 
+                                          key={`${item.id}-price-${item.discountedTotal}`}
+                                          initial={{ opacity: 0, y: -5 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          className="text-green-400 text-xs sm:text-sm font-medium"
+                                        >
+                                          {formatPrice(item.discountedTotal)}
+                                        </motion.span>
+                                      </div>
+                                    ) : (
+                                      <motion.span 
+                                        key={`${item.id}-price-${item.originalTotal}`}
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="text-white text-xs sm:text-sm font-medium"
+                                      >
+                                        {formatPrice(item.originalTotal)}
+                                      </motion.span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -388,6 +456,34 @@ function CheckoutContent() {
                         
                         {/* Order totals */}
                         <div className="space-y-2 sm:space-y-3 py-3 sm:py-4 border-t border-gray-800/50">
+                          {/* Original Subtotal (if there are discounts) */}
+                          {orderData.totalDiscount > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-400 text-sm">Original Subtotal</span>
+                              <span className="text-gray-400 text-sm line-through">
+                                {formatPrice(orderData.originalSubtotal)}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Bulk Discount (if applicable) */}
+                          {orderData.totalDiscount > 0 && (
+                            <div className="flex justify-between">
+                              <div className="flex items-center">
+                                <Tag className="w-4 h-4 text-green-400 mr-1" />
+                                <span className="text-green-400 text-sm font-medium">Bulk Discount</span>
+                              </div>
+                              <motion.span 
+                                key={`discount-${orderData.totalDiscount}`}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-green-400 text-sm font-medium"
+                              >
+                                -{formatPrice(orderData.totalDiscount)}
+                              </motion.span>
+                            </div>
+                          )}
+                          
                           <div className="flex justify-between">
                             <span className="text-gray-400 text-sm">Subtotal</span>
                             <motion.span 
@@ -436,6 +532,22 @@ function CheckoutContent() {
                               {formatPrice(orderData.total)}
                             </motion.span>
                           </div>
+                          
+                          {/* Savings indicator */}
+                          {orderData.totalDiscount > 0 && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mt-4"
+                            >
+                              <div className="flex items-center justify-center">
+                                <Tag className="w-4 h-4 text-green-400 mr-2" />
+                                <span className="text-green-400 text-sm font-medium">
+                                  You saved {formatPrice(orderData.totalDiscount)} with bulk pricing!
+                                </span>
+                              </div>
+                            </motion.div>
+                          )}
                         </div>
                         
                         {/* Trust badges */}

@@ -105,43 +105,46 @@ export default function ListingDetails({ params }) {
   // Add to Cart
   const handleAdd = () => {
     setAddingToCart(true);
-
+  
     // 1) Grab (or init) cart
     const raw = localStorage.getItem("Cart") || "{}";
     const cartObj = JSON.parse(raw);
-
+  
     // 2) Build a composite key:
     //    base is the product ID, then append option & colour if set
     const baseId = params.listing.split("-")[1];
     let cartKey = baseId;
     if (selectedOption)    cartKey += `:${selectedOption}`;
     if (currPage === "prints" && selectedColor) cartKey += `:${selectedColor}`;
-
-    // 3) Increment existing or create new entry under cartKey
+  
+    // 3) Ensure quantity is a valid number
+    const numQuantity = parseInt(quantity) || 1;
+  
+    // 4) Increment existing or create new entry under cartKey
     if (cartObj[cartKey]) {
       // already in cart — add selected quantity
-      cartObj[cartKey].quantity += quantity;
+      cartObj[cartKey].quantity += numQuantity;
       if (currPage === "prints") {
         cartObj[cartKey].chosenColors[selectedColor] =
-          (cartObj[cartKey].chosenColors[selectedColor] || 0) + quantity;
+          (cartObj[cartKey].chosenColors[selectedColor] || 0) + numQuantity;
       }
     } else {
       // brand new slot in cart
       const mainImage = images[0] || "";
-
+  
       // always store both the display price *and* the Stripe Price ID
       const entry = {
         name:        listingData.name,
         price:       displayPrice(),        // string or number
         priceID:     listingData.priceid,   // fallback
         image:       mainImage,
-        quantity:    quantity,
+        quantity:    numQuantity,
         currpage:    currPage,
         id:          itemID,
         chosenOption:    selectedOption || null,
         chosenOptionPriceID: null,
       };
-
+  
       // if we have customOptions, save its Stripe price ID too
       if (selectedOption) {
         const opt = listingData.customOptions.find(o => o.label === selectedOption);
@@ -149,16 +152,16 @@ export default function ListingDetails({ params }) {
           entry.chosenOptionPriceID = opt.priceid;
         }
       }
-
+  
       // prints also track colours per-colour
       if (currPage === "prints") {
-        entry.chosenColors = { [selectedColor]: quantity };
+        entry.chosenColors = { [selectedColor]: numQuantity };
       }
-
+  
       cartObj[cartKey] = entry;
     }
-
-    // 4) persist & refresh
+  
+    // 5) persist & refresh
     localStorage.setItem("Cart", JSON.stringify(cartObj));
     setTimeout(() => {
       setAddingToCart(false);
@@ -471,7 +474,7 @@ export default function ListingDetails({ params }) {
                 <button 
                   type="button"
                   className="bg-[#1c1a1b] text-white border border-[#3a3839] px-3 py-2 rounded-l-lg hover:bg-[#2c2a2b] transition-colors"
-                  onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                  onClick={() => setQuantity(prev => Math.max(1, (typeof prev === 'number' ? prev : parseInt(prev) || 1) - 1))}
                   aria-label="Decrease quantity"
                 >
                   -
@@ -481,9 +484,25 @@ export default function ListingDetails({ params }) {
                   className="bg-[#1c1a1b] text-white border-y border-[#3a3839] py-2 px-3 w-16 text-center focus:outline-none"
                   value={quantity}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    if (!isNaN(val) && val > 0) {
-                      setQuantity(Math.min(val, parseInt(listingData.stock) || 999));
+                    const val = e.target.value;
+                    
+                    // Allow empty string temporarily (for clearing the input)
+                    if (val === '') {
+                      setQuantity('');
+                      return;
+                    }
+                    
+                    // Parse and validate the number
+                    const numVal = parseInt(val);
+                    if (!isNaN(numVal) && numVal > 0) {
+                      setQuantity(Math.min(numVal, parseInt(listingData.stock) || 999));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // If empty on blur, set to 1
+                    const val = e.target.value;
+                    if (val === '' || parseInt(val) < 1 || isNaN(parseInt(val))) {
+                      setQuantity(1);
                     }
                   }}
                   min="1"
@@ -492,7 +511,10 @@ export default function ListingDetails({ params }) {
                 <button 
                   type="button"
                   className="bg-[#1c1a1b] text-white border border-[#3a3839] px-3 py-2 rounded-r-lg hover:bg-[#2c2a2b] transition-colors"
-                  onClick={() => setQuantity(prev => Math.min(parseInt(listingData.stock) || 999, prev + 1))}
+                  onClick={() => setQuantity(prev => {
+                    const currentQty = typeof prev === 'number' ? prev : parseInt(prev) || 0;
+                    return Math.min(parseInt(listingData.stock) || 999, currentQty + 1);
+                  })}
                   aria-label="Increase quantity"
                 >
                   +
@@ -507,7 +529,7 @@ export default function ListingDetails({ params }) {
             
             {/* Add to cart button */}
             <div className="mt-6">
-            <button
+              <button
                 className={`flex items-center justify-center gap-2 font-bold text-white bg-[#cb18db] w-full sm:w-auto px-8 py-3 rounded-full text-lg transition-all duration-300
                 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#a814b6]'}
                 ${((currPage === "prints" && selectedColor === "") || (hasMultipleOptions && !selectedOption)) ? 'opacity-50 cursor-not-allowed' : ''}
@@ -517,7 +539,11 @@ export default function ListingDetails({ params }) {
                   isOutOfStock || 
                   (currPage === "prints" && selectedColor === "") || 
                   (hasMultipleOptions && !selectedOption) ||
-                  addingToCart
+                  addingToCart ||
+                  // Fixed quantity validation
+                  (quantity === '' || quantity === null || quantity === undefined || 
+                  (typeof quantity === 'number' && quantity < 1) || 
+                  (typeof quantity === 'string' && (quantity === '' || parseInt(quantity) < 1 || isNaN(parseInt(quantity)))))
                 }
               >
                 <ShoppingCart size={20} />

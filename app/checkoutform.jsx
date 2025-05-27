@@ -336,6 +336,7 @@ export const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
     const n = name.toLowerCase();
     if (n.includes('reptile')) return '1-2 Business Days';
     if (n.includes('local')) return '1-2 Business Days';
+    if (n.includes('expo')) return 'June 15th, 10am-12pm';
     return '2-3 Business Days';
   };
 
