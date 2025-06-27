@@ -30,6 +30,14 @@ async function calculateShippingOptions(shippingDetails, session) {
   <quote-type>counter</quote-type>
   <parcel-characteristics>
     <weight>${totalWeightKg.toFixed(2)}</weight>
+    <dimensions>
+      <length>${30}</length>
+      <width>${22}</width>
+      <height>${17}</height>
+    </dimensions>
+    <unpackaged>false</unpackaged>
+    <mailing-tube>false</mailing-tube>
+    <oversized>false</oversized>
   </parcel-characteristics>
   <origin-postal-code>${"L6A4Z9"}</origin-postal-code>
   <destination>
@@ -37,7 +45,7 @@ async function calculateShippingOptions(shippingDetails, session) {
       <postal-code>${postalCode}</postal-code>
     </domestic>
   </destination>
-</mailing-scenario>`
+</mailing-scenario>`;
 
 
   // 3) call Canada Post Rates API
@@ -81,7 +89,7 @@ async function calculateShippingOptions(shippingDetails, session) {
   return [{
     shipping_rate_data: {
       type: 'fixed_amount',
-      fixed_amount: { amount: Math.round(due * 100) + 200, currency: 'CAD' },
+      fixed_amount: { amount: Math.round(due * 100), currency: 'CAD' },
       display_name: regularQuote['service-name'] || 'Canada Post - Regular Parcel',
     },
   }, 
@@ -97,13 +105,6 @@ async function calculateShippingOptions(shippingDetails, session) {
       type: 'fixed_amount',
       fixed_amount: { amount: 0, currency: 'CAD' },
       display_name: 'Local Pickup in Vaughan, Ontario',
-    },
-  },
-  {
-    shipping_rate_data: {
-      type: 'fixed_amount',
-      fixed_amount: { amount: 0, currency: 'CAD' },
-      display_name: 'Expo Pickup (June 22nd, 10am-12pm)',
     },
   }];
 }
