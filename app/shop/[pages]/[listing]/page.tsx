@@ -27,7 +27,7 @@ export default function ListingDetails({ params }) {
   const page = items[0];
 
   // Color options + selected color state
-  const colorOptions = ["Canada Day (Red and White)", "Canada Day (Red Glitter)", "White", "Grey", "Black", "Brown", "Teal (Matte)", "Magenta", "Pink", "Rattan Purple", "Ice Blue", "Milk Green", "Red", "Green", "Blue", "Yellow", "Silk Blue Purple", "Silk Red Green", "Silk Galaxy Blue", "Silk Galaxy Purple", "Silk Mint", "Silk Purple", "Silk Gold", "Silk Silver", "Silk Bronze", "Silk Red/Blue/Cyan", "Silk Red/Gold/Purple", "Silk Pink/Gold", "Morandi", "Glacier", "Shiny Silk Blue", "Wood", "Marble", "Sandal Wood", "Yellow Pear Wood", "White Pine Wood", "Ebony Wood"];
+  const colorOptions = ["White", "Grey", "Black", "Brown", "Teal (Matte)", "Magenta", "Pink", "Rattan Purple", "Ice Blue", "Milk Green", "Red", "Green", "Blue", "Yellow", "Silk Blue Purple", "Silk Red Green", "Silk Galaxy Blue", "Silk Galaxy Purple", "Silk Mint", "Silk Purple", "Silk Gold", "Silk Silver", "Silk Bronze", "Silk Red/Blue/Cyan", "Silk Red/Gold/Purple", "Silk Pink/Gold", "Morandi", "Glacier", "Shiny Silk Blue", "Wood", "Marble", "Sandal Wood", "Yellow Pear Wood", "White Pine Wood", "Ebony Wood", "Forest Green"];
   const [selectedColor, setSelectedColor] = useState("");
 
   useEffect(() => {
