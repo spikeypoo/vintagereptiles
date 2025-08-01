@@ -93,11 +93,11 @@ export default function Home() {
 
       // 1) Render "Edit" cards
       let cardsForEdit = items.map((element) => (
-        <CardEdit 
-          key={element.id} 
-          routeData={routeData} 
-          onItemUpdated={refreshItems} 
-          {...element} 
+        <CardEdit
+          key={element.id}
+          routeData={routeData}
+          onItemUpdated={refreshItems}
+          {...element}
         />
       ));
       let container = document.getElementById("edit2");
@@ -108,11 +108,11 @@ export default function Home() {
 
       // 2) Render "Remove" cards
       let cardsForRemove = items.map((element) => (
-        <CardRemove 
-          key={element.id} 
-          routeData={routeData} 
-          onItemDeleted={refreshItems} 
-          {...element} 
+        <CardRemove
+          key={element.id}
+          routeData={routeData}
+          onItemDeleted={refreshItems}
+          {...element}
         />
       ));
       container = document.getElementById("remove2");
@@ -147,7 +147,7 @@ export default function Home() {
     console.log("Sale toggle changed to:", newValue);
     setSale(newValue);
   }
-  
+
   // Old price input
   function handleSaleChange2(e) {
     setOldPrice(e.target.value);
@@ -220,13 +220,13 @@ export default function Home() {
 
     if (hasCustomOptions) {
       finalBody.append("customOptions", JSON.stringify(customOptions));
-    }    
+    }
 
     const resp = await fetch(routeData, { method: "POST", body: finalBody });
     console.log("Created new item. Resp:", resp);
 
-     // Refresh the displayed items after successful add
-     if (resp.ok) {
+    // Refresh the displayed items after successful add
+    if (resp.ok) {
       refreshItems();
       toast("Item Uploaded", {
         description: "The new item has been added successfully.",
@@ -287,10 +287,9 @@ export default function Home() {
                     key={cat.value}
                     onClick={() => handleCategoryClick(cat.value)}
                     className={`rounded-md px-3 py-2 border border-gray-600 text-center cursor-pointer transition
-                      ${
-                        isActive
-                          ? "bg-[#9d00ff] text-white scale-105"
-                          : "bg-gray-700 text-gray-200 hover:scale-105"
+                      ${isActive
+                        ? "bg-[#9d00ff] text-white scale-105"
+                        : "bg-gray-700 text-gray-200 hover:scale-105"
                       }`}
                   >
                     {cat.label}
@@ -307,9 +306,8 @@ export default function Home() {
               {/* ADD ICON */}
               <div
                 onClick={() => handleOptions("add")}
-                className={`cursor-pointer transition ease-in-out hover:scale-105 relative ${
-                  activeOp === "add" ? "scale-110" : ""
-                }`}
+                className={`cursor-pointer transition ease-in-out hover:scale-105 relative ${activeOp === "add" ? "scale-110" : ""
+                  }`}
               >
                 <img
                   src="/images/add.png"
@@ -324,9 +322,8 @@ export default function Home() {
               {/* EDIT ICON */}
               <div
                 onClick={() => handleOptions("edit")}
-                className={`cursor-pointer transition ease-in-out hover:scale-105 relative ${
-                  activeOp === "edit" ? "scale-110" : ""
-                }`}
+                className={`cursor-pointer transition ease-in-out hover:scale-105 relative ${activeOp === "edit" ? "scale-110" : ""
+                  }`}
               >
                 <img
                   src="/images/edit.png"
@@ -341,9 +338,8 @@ export default function Home() {
               {/* REMOVE ICON */}
               <div
                 onClick={() => handleOptions("remove")}
-                className={`cursor-pointer transition ease-in-out hover:scale-105 relative ${
-                  activeOp === "remove" ? "scale-110" : ""
-                }`}
+                className={`cursor-pointer transition ease-in-out hover:scale-105 relative ${activeOp === "remove" ? "scale-110" : ""
+                  }`}
               >
                 <img
                   src="/images/remove.png"
@@ -362,7 +358,7 @@ export default function Home() {
               <h2 className="text-xl font-bold mb-4 flex items-center">
                 Add New Item
               </h2>
-              
+
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
                 {/* Left column */}
                 <div>
@@ -378,118 +374,118 @@ export default function Home() {
                       placeholder="Product name"
                     />
                   </div>
-                  
+
                   {/* Price Section */}
                   <div className="mb-4">
-                  <label className="block mb-2 text-gray-300 text-sm">Price</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-grow">
-                      <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                      <input
-                        name="price"
-                        value={formData.price}
-                        onChange={handleChange}
-                        className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 pl-7"
-                        type="text"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gray-700 rounded-md border border-gray-600 px-3">
-                      <label className="text-gray-300 text-sm whitespace-nowrap">On Sale</label>
-                      <Switch
-                        checked={isSale}
-                        onCheckedChange={setSale}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 bg-gray-700 rounded-md border border-gray-600 px-3">
-                      <label className="text-gray-300 text-sm">Custom Options</label>
-                      <Switch
-                        checked={hasCustomOptions}
-                        onCheckedChange={setHasCustomOptions}
-                      />
+                    <label className="block mb-2 text-gray-300 text-sm">Price</label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-grow">
+                        <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                        <input
+                          name="price"
+                          value={formData.price}
+                          onChange={handleChange}
+                          className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 pl-7"
+                          type="text"
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 bg-gray-700 rounded-md border border-gray-600 px-3">
+                        <label className="text-gray-300 text-sm whitespace-nowrap">On Sale</label>
+                        <Switch
+                          checked={isSale}
+                          onCheckedChange={setSale}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 bg-gray-700 rounded-md border border-gray-600 px-3">
+                        <label className="text-gray-300 text-sm">Custom Options</label>
+                        <Switch
+                          checked={hasCustomOptions}
+                          onCheckedChange={setHasCustomOptions}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {hasCustomOptions && (
-                  <div className="mb-6 space-y-2">
-                    <p className="text-gray-400 text-sm">Define Options:</p>
-                    {customOptions.map((opt, idx) => (
-                      <div key={idx} className="flex gap-2 items-center">
-                        {/* Option Label */}
-                        <input
-                          type="text"
-                          placeholder="Option name"
-                          value={opt.label}
-                          onChange={e => {
-                            const newOpts = [...customOptions];
-                            newOpts[idx].label = e.target.value;
-                            setCustomOptions(newOpts);
-                          }}
-                          className="flex-1 p-2 rounded bg-gray-700 text-gray-200"
-                        />
-
-                        {/* Image selector */}
-                        <select
-                          value={opt.imageIndex}
-                          onChange={e => {
-                            const newOpts = [...customOptions];
-                            newOpts[idx].imageIndex = Number(e.target.value);
-                            setCustomOptions(newOpts);
-                          }}
-                          className="p-2 rounded bg-gray-700 text-gray-200"
-                        >
-                          <option value="">Image #</option>
-                          {files.map((_, i) => (
-                            <option key={i} value={i}>
-                              #{i+1}
-                            </option>
-                          ))}
-                        </select>
-
-                        {/* NEW: Price for this option */}
-                        <div className="relative">
-                          <span className="absolute left-2 top-2 text-gray-400">$</span>
+                  {hasCustomOptions && (
+                    <div className="mb-6 space-y-2">
+                      <p className="text-gray-400 text-sm">Define Options:</p>
+                      {customOptions.map((opt, idx) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          {/* Option Label */}
                           <input
                             type="text"
-                            placeholder="0.00"
-                            value={opt.price}
+                            placeholder="Option name"
+                            value={opt.label}
                             onChange={e => {
                               const newOpts = [...customOptions];
-                              newOpts[idx].price = e.target.value;
+                              newOpts[idx].label = e.target.value;
                               setCustomOptions(newOpts);
                             }}
-                            className="w-20 pl-6 p-2 rounded bg-gray-700 text-gray-200"
+                            className="flex-1 p-2 rounded bg-gray-700 text-gray-200"
                           />
+
+                          {/* Image selector */}
+                          <select
+                            value={opt.imageIndex}
+                            onChange={e => {
+                              const newOpts = [...customOptions];
+                              newOpts[idx].imageIndex = Number(e.target.value);
+                              setCustomOptions(newOpts);
+                            }}
+                            className="p-2 rounded bg-gray-700 text-gray-200"
+                          >
+                            <option value="">Image #</option>
+                            {files.map((_, i) => (
+                              <option key={i} value={i}>
+                                #{i + 1}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* NEW: Price for this option */}
+                          <div className="relative">
+                            <span className="absolute left-2 top-2 text-gray-400">$</span>
+                            <input
+                              type="text"
+                              placeholder="0.00"
+                              value={opt.price}
+                              onChange={e => {
+                                const newOpts = [...customOptions];
+                                newOpts[idx].price = e.target.value;
+                                setCustomOptions(newOpts);
+                              }}
+                              className="w-20 pl-6 p-2 rounded bg-gray-700 text-gray-200"
+                            />
+                          </div>
+
+                          {/* Remove button */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCustomOptions(customOptions.filter((_, i) => i !== idx))
+                            }
+                            className="text-red-500"
+                          >
+                            ✕
+                          </button>
                         </div>
+                      ))}
 
-                        {/* Remove button */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCustomOptions(customOptions.filter((_, i) => i !== idx))
-                          }
-                          className="text-red-500"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCustomOptions([...customOptions, { label: "", imageIndex: 0, price: "" }])
+                        }
+                        className="text-sm text-purple-400 hover:underline"
+                      >
+                        + Add another option
+                      </button>
+                    </div>
+                  )}
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCustomOptions([...customOptions, { label: "", imageIndex: 0, price: ""}])
-                      }
-                      className="text-sm text-purple-400 hover:underline"
-                    >
-                      + Add another option
-                    </button>
-                  </div>
-                )}
 
-                  
                   {/* Old Price (only if on sale) */}
                   {isSale && (
                     <div className="mb-4">
@@ -505,7 +501,7 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Stock */}
                   <div className="mb-4">
                     <label className="block mb-2 text-gray-300 text-sm">Stock</label>
@@ -519,7 +515,7 @@ export default function Home() {
                     />
                   </div>
                 </div>
-                
+
                 {/* Right column */}
                 <div>
                   {/* Description */}
@@ -534,7 +530,7 @@ export default function Home() {
                       placeholder="Product description..."
                     />
                   </div>
-                  
+
                   {/* Images */}
                   <div className="mb-4">
                     <label className="block mb-2 text-gray-300 text-sm">Images (up to 16)</label>
@@ -549,9 +545,9 @@ export default function Home() {
                       />
                       <label htmlFor="image-upload" className="cursor-pointer">
                         <div className="flex flex-col items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
                           <p className="text-gray-400">Drag & drop or click to upload</p>
                           <p className="text-gray-500 text-xs">(JPG, PNG, WebP - max 5MB each)</p>
                         </div>
@@ -559,7 +555,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Image previews - full width */}
                 <div className="col-span-full">
                   {files.length > 0 && (
@@ -590,7 +586,7 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Submit Button - full width */}
                 <div className="col-span-full mt-2">
                   <button
@@ -657,18 +653,18 @@ function CardEdit(props) {
             SALE
           </div>
         )}
-        
+
         {/* Stock indicator */}
         <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-full z-10 
-          ${parseInt(props.stock) > 5 
-            ? "bg-green-500/80 text-white" 
-            : parseInt(props.stock) > 0 
-              ? "bg-yellow-500/80 text-white" 
+          ${parseInt(props.stock) > 5
+            ? "bg-green-500/80 text-white"
+            : parseInt(props.stock) > 0
+              ? "bg-yellow-500/80 text-white"
               : "bg-red-500/80 text-white"}`
         }>
           {parseInt(props.stock) > 0 ? `${props.stock} in stock` : "Out of stock"}
         </div>
-        
+
         {/* Image with gradient overlay */}
         <div className="relative h-[150px] cursor-pointer" onClick={openModal}>
           {Array.isArray(props.images) && props.images.length > 0 ? (
@@ -690,7 +686,7 @@ function CardEdit(props) {
         {/* Product info */}
         <div className="p-4 text-left">
           <h3 className="font-medium text-white truncate" title={props.name}>{props.name}</h3>
-          
+
           <div className="flex items-baseline mt-1">
             {props.issale === "true" ? (
               <>
@@ -701,7 +697,7 @@ function CardEdit(props) {
               <span className="text-white font-bold">${parseFloat(props.price).toFixed(2)}</span>
             )}
           </div>
-          
+
           <button
             onClick={openModal}
             className="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-1.5 text-sm transition"
@@ -760,18 +756,18 @@ function CardRemove(props) {
             SALE
           </div>
         )}
-        
+
         {/* Stock indicator */}
         <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-full z-10 
-          ${parseInt(props.stock) > 5 
-            ? "bg-green-500/80 text-white" 
-            : parseInt(props.stock) > 0 
-              ? "bg-yellow-500/80 text-white" 
+          ${parseInt(props.stock) > 5
+            ? "bg-green-500/80 text-white"
+            : parseInt(props.stock) > 0
+              ? "bg-yellow-500/80 text-white"
               : "bg-red-500/80 text-white"}`
         }>
           {parseInt(props.stock) > 0 ? `${props.stock} in stock` : "Out of stock"}
         </div>
-        
+
         {/* Image with gradient overlay */}
         <div className="relative h-[150px] cursor-pointer" onClick={openModal}>
           {Array.isArray(props.images) && props.images.length > 0 ? (
@@ -793,11 +789,11 @@ function CardRemove(props) {
         {/* Product info */}
         <div className="p-4 text-left">
           <h3 className="font-medium text-white truncate" title={props.name}>{props.name}</h3>
-          
+
           <div className="flex items-baseline mt-1">
             {priceDisplay()}
           </div>
-          
+
           <button
             onClick={openModal}
             className="mt-3 w-full bg-red-700 hover:bg-red-600 text-white rounded-lg py-1.5 text-sm transition flex items-center justify-center"
@@ -861,6 +857,9 @@ function ModalEdit({
   // For newly selected images (the user might add more)
   const [newFiles, setNewFiles] = useState([]);
 
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
   const [hasCustomOptions, setHasCustomOptions] = useState(
     Array.isArray(customOptions) && customOptions.length > 0
   );
@@ -874,6 +873,49 @@ function ModalEdit({
       price: opt.price ?? ""
     }))
   );
+
+  function handleDragStart(e, index) {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(e, index) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  }
+
+  function handleDragLeave() {
+    setDragOverIndex(null);
+  }
+
+  function handleDrop(e, dropIndex) {
+    e.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newImages = [...localImages];
+    const draggedImage = newImages[draggedIndex];
+
+    // Remove the dragged image from its original position
+    newImages.splice(draggedIndex, 1);
+
+    // Insert it at the new position
+    newImages.splice(dropIndex, 0, draggedImage);
+
+    setLocalImages(newImages);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }
+
+  function handleDragEnd() {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }
 
   const dropdownCount = localImages.length + newFiles.length;
 
@@ -894,10 +936,10 @@ function ModalEdit({
     let input = e.target.value.trim();
     setEditData((prev) => ({ ...prev, oldprice: input }));
   }
-  
+
   function handleEditPrice(e) {
     let input = e.target.value.trim();
-  
+
     // Regular number input
     setEditData((prev) => ({ ...prev, price: input }));
   }
@@ -906,7 +948,7 @@ function ModalEdit({
     const input = e.target.value.trim();
     const percent = parseFloat(input);
     const old = parseFloat(editData.oldprice);
-  
+
     if (!isNaN(percent) && !isNaN(old)) {
       const newPrice = (old * (1 - percent / 100)).toFixed(2);
       setEditData((prev) => ({ ...prev, price: newPrice }));
@@ -959,7 +1001,7 @@ function ModalEdit({
         });
         newUrls.push(
           "https://vintage-reptiles-storage.s3.us-east-2.amazonaws.com/" +
-            extension
+          extension
         );
       }
     }
@@ -1057,7 +1099,7 @@ function ModalEdit({
                   className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700"
                 />
               </div>
-              
+
               <div>
                 <label className="block mb-1 text-sm text-gray-400">Stock</label>
                 <input
@@ -1165,14 +1207,14 @@ function ModalEdit({
                   onCheckedChange={setIsSale}
                 />
               </div>
-              
+
               {isSale && (
                 <div className="mt-3 space-y-2">
                   <div>
                     <label className="block mb-1 text-xs text-gray-400">Discount %</label>
                     <input
-                      className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-sm" 
-                      onChange={handleEditDiscountChange} 
+                      className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-sm"
+                      onChange={handleEditDiscountChange}
                       placeholder="Enter discount percentage"
                     />
                   </div>
@@ -1200,21 +1242,45 @@ function ModalEdit({
               />
             </div>
           </div>
-          
+
           {/* Right column - images */}
           <div className="space-y-4">
             <div>
-              <label className="block mb-1 text-sm text-gray-400">Current Images</label>
+              <label className="block mb-1 text-sm text-gray-400">Current Images (drag to reorder)</label>
               <div className="border border-gray-700 rounded-lg p-3 bg-gray-800">
                 {localImages && localImages.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2">
                     {localImages.map((url, idx) => (
-                      <div key={idx} className="relative group">
+                      <div
+                        key={idx}
+                        className={`relative group cursor-move ${draggedIndex === idx ? 'opacity-50 scale-95' : ''
+                          } ${dragOverIndex === idx ? 'ring-2 ring-purple-500' : ''
+                          }`}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={(e) => handleDragOver(e, idx)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        onDragEnd={handleDragEnd}
+                      >
                         <img
                           src={url}
                           alt="Current"
-                          className="w-full aspect-square object-cover rounded-md border border-gray-700 group-hover:opacity-75 transition"
+                          className="w-full aspect-square object-cover rounded-md border border-gray-700 group-hover:opacity-75 transition pointer-events-none"
                         />
+
+                        {/* Drag indicator */}
+                        <div className="absolute top-1 left-1 bg-black/50 rounded p-1 opacity-0 group-hover:opacity-100 transition">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                          </svg>
+                        </div>
+
+                        {/* Image number indicator */}
+                        <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs rounded px-1.5 py-0.5">
+                          #{idx + 1}
+                        </div>
+
                         <button
                           type="button"
                           className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
@@ -1230,7 +1296,7 @@ function ModalEdit({
                 )}
               </div>
             </div>
-            
+
             <div>
               <label className="block mb-1 text-sm text-gray-400">Add More Images</label>
               <div className="border-2 border-dashed border-gray-700 rounded-lg p-4 text-center hover:border-purple-500 transition cursor-pointer">
@@ -1251,7 +1317,7 @@ function ModalEdit({
                   </div>
                 </label>
               </div>
-              
+
               {/* Preview new images */}
               {newFiles.length > 0 && (
                 <div className="mt-3">
@@ -1281,7 +1347,7 @@ function ModalEdit({
               )}
             </div>
           </div>
-          
+
           {/* Action buttons - full width */}
           <div className="col-span-full flex gap-4 justify-end mt-4 pt-4 border-t border-gray-800">
             <button
@@ -1307,7 +1373,7 @@ function ModalEdit({
 /* ------------------------------------------------------------------
    ModalRemove: Confirm item deletion
 ------------------------------------------------------------------ */
-function ModalRemove({ onClose, isClicked, name, id, routeData, images = [], description, price, stock, issale, oldprice, onItemDeleted}) {
+function ModalRemove({ onClose, isClicked, name, id, routeData, images = [], description, price, stock, issale, oldprice, onItemDeleted }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   function handleExit() {
@@ -1316,12 +1382,12 @@ function ModalRemove({ onClose, isClicked, name, id, routeData, images = [], des
 
   async function handleDelete() {
     setIsDeleting(true);
-    
+
     try {
       const body = new FormData();
       body.append("id", id);
       const resp = await fetch(routeData, { method: "DELETE", body });
-      
+
       // Check if response was OK
       if (resp.ok) {
         onItemDeleted();
@@ -1380,7 +1446,7 @@ function ModalRemove({ onClose, isClicked, name, id, routeData, images = [], des
               </div>
             )}
           </div>
-          
+
           {/* Item details */}
           <div className="flex-grow">
             <h3 className="font-medium text-lg mb-1">{name}</h3>
@@ -1398,12 +1464,12 @@ function ModalRemove({ onClose, isClicked, name, id, routeData, images = [], des
             </div>
           </div>
         </div>
-        
+
         {/* Confirmation message */}
         <div className="mt-4 mb-5 text-gray-300 text-sm">
           Are you sure you want to delete this item? This action cannot be undone.
         </div>
-        
+
         {/* Action buttons */}
         <div className="flex gap-3 justify-end">
           <button
