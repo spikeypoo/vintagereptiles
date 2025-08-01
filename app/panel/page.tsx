@@ -859,6 +859,7 @@ function ModalEdit({
 
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [touchStartPos, setTouchStartPos] = useState({ x: 0, y: 0 });
 
   const [hasCustomOptions, setHasCustomOptions] = useState(
     Array.isArray(customOptions) && customOptions.length > 0
@@ -916,6 +917,53 @@ function ModalEdit({
     setDraggedIndex(null);
     setDragOverIndex(null);
   }
+
+  // Touch handlers for mobile
+  function handleTouchStart(e, index) {
+    const touch = e.touches[0];
+    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+    setDraggedIndex(index);
+  }
+
+  function handleTouchMove(e) {
+    if (draggedIndex === null) return;
+
+    e.preventDefault(); // Prevent scrolling
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    // Find the closest image container
+    const imageContainer = element?.closest('[data-image-index]');
+    if (imageContainer) {
+      const newIndex = parseInt(imageContainer.dataset.imageIndex);
+      setDragOverIndex(newIndex);
+    }
+  }
+
+  function handleTouchEnd(e) {
+    if (draggedIndex === null || dragOverIndex === null) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    if (draggedIndex !== dragOverIndex) {
+      const newImages = [...localImages];
+      const draggedImage = newImages[draggedIndex];
+
+      // Remove the dragged image from its original position
+      newImages.splice(draggedIndex, 1);
+
+      // Insert it at the new position
+      newImages.splice(dragOverIndex, 0, draggedImage);
+
+      setLocalImages(newImages);
+    }
+
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }
+
 
   const dropdownCount = localImages.length + newFiles.length;
 
@@ -1253,8 +1301,9 @@ function ModalEdit({
                     {localImages.map((url, idx) => (
                       <div
                         key={idx}
-                        className={`relative group cursor-move ${draggedIndex === idx ? 'opacity-50 scale-95' : ''
-                          } ${dragOverIndex === idx ? 'ring-2 ring-purple-500' : ''
+                        data-image-index={idx}
+                        className={`relative group cursor-move select-none ${draggedIndex === idx ? 'opacity-50 scale-95 z-10' : ''
+                          } ${dragOverIndex === idx && draggedIndex !== idx ? 'ring-2 ring-purple-500' : ''
                           }`}
                         draggable
                         onDragStart={(e) => handleDragStart(e, idx)}
@@ -1262,6 +1311,10 @@ function ModalEdit({
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, idx)}
                         onDragEnd={handleDragEnd}
+                        onTouchStart={(e) => handleTouchStart(e, idx)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        style={{ touchAction: 'none' }}
                       >
                         <img
                           src={url}
@@ -1269,10 +1322,10 @@ function ModalEdit({
                           className="w-full aspect-square object-cover rounded-md border border-gray-700 group-hover:opacity-75 transition pointer-events-none"
                         />
 
-                        {/* Drag indicator */}
+                        {/* Enhanced drag indicator for mobile */}
                         <div className="absolute top-1 left-1 bg-black/50 rounded p-1 opacity-0 group-hover:opacity-100 transition">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
                           </svg>
                         </div>
 
@@ -1283,8 +1336,9 @@ function ModalEdit({
 
                         <button
                           type="button"
-                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition z-20"
                           onClick={() => removeExistingImage(idx)}
+                          onTouchStart={(e) => e.stopPropagation()}
                         >
                           ✕
                         </button>
@@ -1294,6 +1348,11 @@ function ModalEdit({
                 ) : (
                   <div className="text-center py-8 text-gray-500">No images available</div>
                 )}
+              </div>
+
+              {/* Mobile instructions */}
+              <div className="mt-2 text-xs text-gray-500 md:hidden">
+                💡 Touch and hold an image, then drag to reorder
               </div>
             </div>
 
