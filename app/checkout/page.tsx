@@ -10,6 +10,48 @@ import Image from "next/image";
 import { ArrowLeft, ShoppingCart, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
+const ELIGIBLE_PRODUCT_IDS = new Set([
+    "prod_SCLs3mv4vbqs76",
+    "prod_Qw2iLBkbaYpORc",
+    "prod_Qw0epnbTOvB2h4",
+    "prod_Qw0XLjxb3ESzla",
+    "prod_Qw0g6pDBQoDUl3",
+    "prod_QsZlszGPRpDInS",
+    "prod_RztCIunfFd9dnv",
+    "prod_RztC8a7cL6Pv2L",
+    "prod_SCLs3mv4vbqs76",
+    "prod_SMneIxE8hGSN2n",
+    "prod_SMnctTkG1EN6er",
+    "prod_SKASjfjCK6sXDX",
+    "prod_SJpFyNEorWO0Bk",
+    "prod_SJnDwKP63LzZ96",
+    "prod_SHsalw5YhR1lQ1",
+    "prod_SHsZi6N6vXm8Sg",
+    "prod_SGQyc87Kq0t3VK",
+    "prod_SGQrAVwUa6mIj7",
+    "prod_SD7ugRIQ13WbIr",
+    "prod_RKn2lMpnfXyxw3",
+    "prod_Qw0g6pDBQoDUl3",
+    "prod_QsZlszGPRpDInS",
+    "prod_QsZll9iTxdqVcO",
+    "prod_TAv3tAZtyVmLCJ",
+    'prod_T4u86Wm0HUvlI1',
+    'prod_SiuVvCrB1nvs9B',
+    'prod_SiXJCgSIroPN5r',
+    'prod_SVQFBcHD6dZduz',
+    'prod_SVPdbGEi5sx5GY',
+    'prod_SVParklzr437Tw',
+    'prod_SVPa3Cf1CcigSH',
+    'prod_SOh6AYuwbMtJqH',
+    'prod_SOh4VWt2BrBkz9',
+    'prod_SMneIxE8hGSN2n',
+    'prod_SMnctTkG1EN6er',
+    'prod_SKASjfjCK6sXDX',
+    'prod_SJnDwKP63LzZ96',
+    'prod_SHsalw5YhR1lQ1',
+    'prod_SHsZi6N6vXm8Sg',
+  ]);
+
 // Keep your existing Stripe public key
 const stripePromise = loadStripe('pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB5PlJl8XcHVbTf0B0T3h7Ey7y28URqdIITb48aM9jjZ7wjuCPKKb00utiqhUVv', {
   betas: ['custom_checkout_server_updates_1'],
@@ -23,7 +65,7 @@ const isFrom3DPrintSection = (item) => {
 
 // Function to calculate bulk discount for 3D print items
 const calculateBulkDiscount = (quantity, item) => {
-  if (!isFrom3DPrintSection(item)) return 0;
+  if (!ELIGIBLE_PRODUCT_IDS.has(item.productID)) return 0;
   
   if (quantity >= 30) return 0.20;
   else if (quantity >= 20) return 0.15;

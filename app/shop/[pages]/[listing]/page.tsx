@@ -27,7 +27,7 @@ export default function ListingDetails({ params }) {
   const page = items[0];
 
   // Color options + selected color state
-  const colorOptions = ["White", "Grey", "Black", "Brown", "Teal (Matte)", "Magenta", "Pink", "Rattan Purple", "Ice Blue", "Milk Green", "Red", "Green", "Blue", "Yellow", "Silk Blue Purple", "Silk Red Green", "Silk Galaxy Blue", "Silk Galaxy Purple", "Silk Mint", "Silk Purple", "Silk Gold", "Silk Silver", "Silk Bronze", "Silk Red/Blue/Cyan", "Silk Red/Gold/Purple", "Silk Pink/Gold", "Morandi", "Glacier", "Shiny Silk Blue", "Wood", "Marble", "Sandal Wood", "Yellow Pear Wood", "White Pine Wood", "Ebony Wood", "Forest Green"];
+  const colorOptions = ["White", "Grey", "Black", "Brown", "Teal (Matte)", "Magenta", "Pink", "Rattan Purple", "Ice Blue", "Milk Green", "Red", "Green", "Blue", "Yellow", "Silk Blue Purple", "Silk Red Green", "Silk Galaxy Blue", "Silk Galaxy Purple", "Silk Mint", "Silk Purple", "Silk Gold", "Silk Silver", "Silk Bronze", "Silk Red/Blue/Cyan", "Silk Red/Gold/Purple", "Silk Pink/Gold", "Morandi", "Glacier", "Shiny Silk Blue", "Wood", "Marble", "Sandal Wood", "Yellow Pear Wood", "White Pine Wood", "Ebony Wood", "Forest Green", "Quartzite (Limited Edition)", "Glitter Red (Limited Edition)", "Glitter Green (Limited Edition)"];
   const [selectedColor, setSelectedColor] = useState("");
 
   useEffect(() => {
@@ -115,7 +115,6 @@ export default function ListingDetails({ params }) {
     const baseId = params.listing.split("-")[1];
     let cartKey = baseId;
     if (selectedOption)    cartKey += `:${selectedOption}`;
-    if (currPage === "prints" && selectedColor) cartKey += `:${selectedColor}`;
   
     // 3) Ensure quantity is a valid number
     const numQuantity = parseInt(quantity) || 1;
@@ -137,6 +136,7 @@ export default function ListingDetails({ params }) {
         name:        listingData.name,
         price:       displayPrice(),        // string or number
         priceID:     listingData.priceid,   // fallback
+        productID: listingData.stripeid,
         image:       mainImage,
         quantity:    numQuantity,
         currpage:    currPage,

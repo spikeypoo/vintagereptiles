@@ -33,6 +33,22 @@ export async function POST(req: NextRequest, res: NextResponse) {
     "prod_Qw0g6pDBQoDUl3",
     "prod_QsZlszGPRpDInS",
     "prod_QsZll9iTxdqVcO",
+    "prod_TAv3tAZtyVmLCJ",
+    'prod_T4u86Wm0HUvlI1',
+    'prod_SiuVvCrB1nvs9B',
+    'prod_SiXJCgSIroPN5r',
+    'prod_SVQFBcHD6dZduz',
+    'prod_SVPdbGEi5sx5GY',
+    'prod_SVParklzr437Tw',
+    'prod_SVPa3Cf1CcigSH',
+    'prod_SOh6AYuwbMtJqH',
+    'prod_SOh4VWt2BrBkz9',
+    'prod_SMneIxE8hGSN2n',
+    'prod_SMnctTkG1EN6er',
+    'prod_SKASjfjCK6sXDX',
+    'prod_SJnDwKP63LzZ96',
+    'prod_SHsalw5YhR1lQ1',
+    'prod_SHsZi6N6vXm8Sg',
   ]);
 
   // Validate stock
@@ -119,6 +135,9 @@ export async function POST(req: NextRequest, res: NextResponse) {
       ],
       payment_method_types: ["card", "afterpay_clearpay"],
       line_items: lineItems,
+      phone_number_collection: {
+        enabled: true,
+      },
       mode: "payment",
       ui_mode: "custom", // This enables embedded checkout
       return_url: `${headersList.get("origin")}/thank-you`,

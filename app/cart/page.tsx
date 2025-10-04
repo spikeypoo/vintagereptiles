@@ -59,7 +59,7 @@ export default function CartDetails() {
 
         details[key].chosenOption = value.chosenOption || "";
 
-        // Combine color data into a string, if needed for your checkout
+        // Combine color data into a string, if needed
         let colorDisplay = "";
         if (value.chosenColors) {
           if (

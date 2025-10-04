@@ -6,7 +6,7 @@ import {
   AddressElement,
   useCheckout,
 } from '@stripe/react-stripe-js';
-import { ArrowRight, Check, Clock, Mail, Package, Truck, CreditCard } from "lucide-react";
+import { ArrowRight, Check, Clock, Mail, Package, Truck, CreditCard, Phone } from "lucide-react";
 
 const validateEmail = async (email, checkout) => {
   const updateResult = await checkout.updateEmail(email);
@@ -16,35 +16,35 @@ const validateEmail = async (email, checkout) => {
 
 const formatPrice = (amount, currency = 'USD') => {
   const validCurrency = currency || 'USD';
-  
+
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: validCurrency.toUpperCase(),
     }).format(amount / 100);
-  } catch(error) {
+  } catch (error) {
     return `${(amount / 100).toFixed(2)}`;
   }
 };
 
-const CheckoutStep = ({ 
-  step, 
-  currentStep, 
-  title, 
-  icon, 
-  isCompleted, 
+const CheckoutStep = ({
+  step,
+  currentStep,
+  title,
+  icon,
+  isCompleted,
   children,
   onEdit
 }) => {
   const isActive = step === currentStep;
   const isPreviouslyCompleted = isCompleted && step < currentStep;
-  
+
   return (
     <div className={`mb-6 transition-all duration-300 ${step <= currentStep ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
       <div className="flex items-center mb-3 relative">
         <div className={`
           flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full mr-2 sm:mr-3
-          ${isActive ? 'bg-[#cb18db] text-white' : 
+          ${isActive ? 'bg-[#cb18db] text-white' :
             isPreviouslyCompleted ? 'bg-green-500 text-white' : 'bg-[#2a2728] text-gray-300'}
           transition-colors duration-300
         `}>
@@ -58,9 +58,9 @@ const CheckoutStep = ({
           ${isActive ? 'text-white' : isPreviouslyCompleted ? 'text-green-400' : 'text-gray-400'}`}>
           {title}
         </h3>
-        
+
         {isPreviouslyCompleted && (
-          <button 
+          <button
             onClick={() => onEdit(step)}
             className="text-[#cb18db] hover:text-[#d334e7] text-xs sm:text-sm font-medium flex items-center"
           >
@@ -68,7 +68,7 @@ const CheckoutStep = ({
           </button>
         )}
       </div>
-      
+
       <div className={`
         overflow-hidden transition-all duration-500 ease-in-out ml-6 sm:ml-12
         ${isActive ? 'max-h-[1500px] opacity-100' : 'max-h-0 opacity-0'}
@@ -79,12 +79,67 @@ const CheckoutStep = ({
   );
 };
 
-// Here's the fixed EmailStep component - the issue is in how the email state is handled
+const PhoneStep = ({ phone, setPhone, error, setError, onComplete, checkout }) => {
+  const [localPhone, setLocalPhone] = useState(phone || "");
+
+  const handleContinue = async () => {
+    if (!localPhone.trim()) {
+      setError("Phone number is required");
+      return;
+    }
+
+    try {
+      await checkout.updatePhoneNumber(localPhone);
+
+      setError(null);
+      onComplete();
+    } catch (err) {
+      console.error("Failed to update phone number in Stripe:", err);
+      setError("Failed to save phone number. Please try again.");
+    }
+  };
+
+  const handleChange = (e) => {
+    setLocalPhone(e.target.value);
+    setPhone(e.target.value);
+    setError(null);
+  };
+
+  return (
+    <div className="bg-[#1d1b1b] rounded-lg p-4 sm:p-6 mb-4 shadow-lg border border-gray-800">
+      <div className="mb-5">
+        <label className="block text-white text-base sm:text-lg mb-2 font-medium">
+          Phone Number
+          <input
+            id="phone"
+            type="tel"
+            value={localPhone}
+            onChange={handleChange}
+            placeholder="Enter phone number"
+            className="w-full px-3 py-2 sm:px-4 sm:py-3 mt-2 rounded-md bg-[#2a2728] border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-[#cb18db] focus:border-transparent transition duration-200"
+          />
+        </label>
+        {error && (
+          <div className="text-red-400 mt-2 text-sm">{error}</div>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleContinue}
+          className="bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-md hover:from-[#d334e7] hover:to-[#b321c9] focus:outline-none focus:ring-2 focus:ring-[#cb18db] transition duration-200 flex items-center text-sm sm:text-base"
+        >
+          Continue <ArrowRight className="ml-1 sm:ml-2 w-3 h-3 sm:w-4 sm:h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
   const checkout = useCheckout();
   const [localEmail, setLocalEmail] = useState(email || "");
-  
+
   useEffect(() => {
     if (email) {
       setLocalEmail(email);
@@ -111,13 +166,13 @@ const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
       setError("Email is required");
       return;
     }
-    
+
     const { isValid, message } = await validateEmail(localEmail, checkout);
     if (!isValid) {
       setError(message);
       return;
     }
-    
+
     onComplete();
   };
 
@@ -142,9 +197,9 @@ const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
           </div>
         )}
       </div>
-      
+
       <div className="flex justify-end">
-        <button 
+        <button
           onClick={handleContinue}
           className="bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-md hover:from-[#d334e7] hover:to-[#b321c9] focus:outline-none focus:ring-2 focus:ring-[#cb18db] transition duration-200 flex items-center text-sm sm:text-base"
         >
@@ -160,7 +215,7 @@ export const BillingAddressStep = ({ onComplete, shippingAddressData }) => {
   const [sameAsShipping, setSameAsShipping] = useState(false);
   const [billingComplete, setBillingComplete] = useState(false);
   const checkout = useCheckout();
-  
+
   // copy shipping → billing when toggled
   useEffect(() => {
     if (sameAsShipping && shippingAddressData) {
@@ -223,7 +278,7 @@ export function ShippingAddressStep({ onComplete, active }) {
   const { runServerUpdate, getShippingAddressElement, id: sessionId } = useCheckout();
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Force reset loading state when component is visible
   useEffect(() => {
     if (active) {
@@ -296,9 +351,8 @@ export function ShippingAddressStep({ onComplete, active }) {
           key={`shipping-btn-${isLoading}`}
           onClick={handleSave}
           disabled={isLoading}
-          className={`px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white rounded-md flex items-center justify-center transition-all duration-200 text-sm sm:text-base ${
-            isLoading ? 'opacity-90' : 'hover:from-[#d334e7] hover:to-[#b321c9]'
-          }`}
+          className={`px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-[#cb18db] to-[#a012b8] text-white rounded-md flex items-center justify-center transition-all duration-200 text-sm sm:text-base ${isLoading ? 'opacity-90' : 'hover:from-[#d334e7] hover:to-[#b321c9]'
+            }`}
         >
           {buttonText}
         </button>
@@ -321,13 +375,13 @@ export const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
 
   const handleSelectOption = async (optId) => {
     if (optId === selectedOption) return;
-    
+
     setSelectedOption(optId);
     await checkout.updateShippingOption(optId);
-    
+
     const opt = checkout.shippingOptions.find(o => o.id === optId);
     const cost = opt
-      ? parseFloat(opt.amount.replace(/[^0-9.]/g, ''))  
+      ? parseFloat(opt.amount.replace(/[^0-9.]/g, ''))
       : 0;
     updateShipping(cost);
   };
@@ -336,7 +390,7 @@ export const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
     const n = name.toLowerCase();
     if (n.includes('reptile')) return '1-2 Business Days';
     if (n.includes('local')) return '1-2 Business Days';
-    if (n.includes('expo')) return 'June 22nd, 10am-12pm';
+    if (n.includes('expo')) return 'October 19th, 10am-1pm';
     return '2-3 Business Days';
   };
 
@@ -447,20 +501,19 @@ const PaymentStep = ({ isLoading, handleSubmit, message, total }) => {
           options={{ layout: { type: 'tabs', defaultCollapsed: false } }}
         />
       </div>
-      
+
       {message && (
         <div
           id="payment-message"
-          className={`p-3 sm:p-4 rounded-md mb-5 sm:mb-6 text-sm sm:text-base ${
-            message.includes('error')
-              ? 'bg-red-900/40 text-red-300'
-              : 'bg-green-900/40 text-green-300'
-          }`}
+          className={`p-3 sm:p-4 rounded-md mb-5 sm:mb-6 text-sm sm:text-base ${message.includes('error')
+            ? 'bg-red-900/40 text-red-300'
+            : 'bg-green-900/40 text-green-300'
+            }`}
         >
           {message}
         </div>
       )}
-      
+
       <button
         disabled={isLoading}
         onClick={handleSubmit}
@@ -511,15 +564,20 @@ const CheckoutForm = ({ updateShipping }) => {
     2: false,
     3: false,
     4: false,
+    5: false,
   });
 
   // Add local email state
   const [emailValue, setEmailValue] = useState(checkout.email || "");
   const [emailError, setEmailError] = useState(null);
-  
+
+  const [phoneValue, setPhoneValue] = useState("");
+  const [phoneError, setPhoneError] = useState(null);
+
+
   // 2) Store the raw shippingDetails so we can send them to our API
   const [shippingDetails, setShippingDetails] = useState(null);
-  
+
   // Track loading state for shipping options
   const [loadingShippingOptions, setLoadingShippingOptions] = useState(false);
 
@@ -527,7 +585,7 @@ const CheckoutForm = ({ updateShipping }) => {
 
   // Watch for step changes to unmount after animation
   useEffect(() => {
-    if (currentStep !== 2) {
+    if (currentStep !== 3) {
       // delay unmounting until after animation (500ms matches the duration in CheckoutStep)
       const timer = setTimeout(() => setShouldRenderShipping(false), 500);
       return () => clearTimeout(timer);
@@ -542,15 +600,15 @@ const CheckoutForm = ({ updateShipping }) => {
     setStepsCompleted((pc) => ({ ...pc, [step]: true }));
     setCurrentStep(step + 1);
 
-    if (step === 2) {
+    if (step === 3) {
       updateShipping(null);
     }
   };
-  
+
   // Handle editing a previous step
   const handleEditStep = (step) => {
     // If going back to shipping address step, clear loading state
-    if (step === 2) {
+    if (step === 3) {
       setLoadingShippingOptions(false);
       updateShipping(null);
     }
@@ -563,10 +621,10 @@ const CheckoutForm = ({ updateShipping }) => {
     const details = checkout.shippingDetails;
     setShippingDetails(details);
     setLoadingShippingOptions(true); // Set loading state for shipping options
-    
+
     // After some time, the shipping options will be loaded via the checkout hook
     // Let's automatically move to the next step
-    completeStep(2);
+    completeStep(3);
   };
 
   // When shipping methods step is shown, automatically reset the loading state
@@ -605,59 +663,78 @@ const CheckoutForm = ({ updateShipping }) => {
               />
             </CheckoutStep>
 
-            {/* 2: Shipping Address */}
             <CheckoutStep
               step={2}
               currentStep={currentStep}
+              title="Phone Number"
+              icon={<Phone />}
+              isCompleted={stepsCompleted[2]}
+              onEdit={handleEditStep}
+            >
+              <PhoneStep
+                phone={phoneValue}
+                setPhone={setPhoneValue}
+                checkout={checkout}
+                error={phoneError}
+                setError={setPhoneError}
+                onComplete={() => completeStep(2)}
+              />
+            </CheckoutStep>
+
+
+            {/* 2: Shipping Address */}
+            <CheckoutStep
+              step={3}
+              currentStep={currentStep}
               title="Shipping Address"
               icon={<Package />}
-              isCompleted={stepsCompleted[2]}
+              isCompleted={stepsCompleted[3]}
               onEdit={handleEditStep}
             >
               {shouldRenderShipping && (
                 <ShippingAddressStep
                   onComplete={onShippingAddressComplete}
-                  active={currentStep === 2}
+                  active={currentStep === 3}
                 />
               )}
             </CheckoutStep>
 
 
-            
-            {/* 3: Billing Address */}
-            <CheckoutStep
-              step={3}
-              currentStep={currentStep}
-              title="Billing Address"
-              icon={<CreditCard />}
-              isCompleted={stepsCompleted[3]}
-              onEdit={handleEditStep}
-            >
-              <BillingAddressStep
-                onComplete={() => completeStep(3)}
-                shippingAddressData={shippingDetails}
-              />
-            </CheckoutStep>
-            
 
-            {/* 4: Shipping Methods */}
+            {/* 3: Billing Address */}
             <CheckoutStep
               step={4}
               currentStep={currentStep}
-              title="Shipping Method"
-              icon={<Truck />}
+              title="Billing Address"
+              icon={<CreditCard />}
               isCompleted={stepsCompleted[4]}
               onEdit={handleEditStep}
             >
-              <ShippingMethodsStep
+              <BillingAddressStep
                 onComplete={() => completeStep(4)}
+                shippingAddressData={shippingDetails}
+              />
+            </CheckoutStep>
+
+
+            {/* 4: Shipping Methods */}
+            <CheckoutStep
+              step={5}
+              currentStep={currentStep}
+              title="Shipping Method"
+              icon={<Truck />}
+              isCompleted={stepsCompleted[5]}
+              onEdit={handleEditStep}
+            >
+              <ShippingMethodsStep
+                onComplete={() => completeStep(5)}
                 updateShipping={updateShipping}
               />
             </CheckoutStep>
 
             {/* final: Payment */}
             <CheckoutStep
-              step={5}
+              step={6}
               currentStep={currentStep}
               title="Payment"
               icon={<CreditCard />}
@@ -677,5 +754,5 @@ const CheckoutForm = ({ updateShipping }) => {
     </div>
   );
 };
-  
+
 export default CheckoutForm;
