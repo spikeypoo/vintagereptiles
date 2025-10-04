@@ -14,7 +14,7 @@ export default function Home() {
     <div className=" mb-[75px]">
       <br />
       <div className="flex justify-center items-center">
-        <Image src="/images/logo-bg.png" width = {400} height={330} className="max-w-[85%] md:w-[360px] md:h-[340px]" alt="Vintage Reptiles"></Image>
+        <Image src="/images/logo-bg.png" width = {400} height={330} className="max-w-[85%] md:w-[360px] h-auto" alt="Vintage Reptiles"></Image>
       </div>
       <div className="flex justify-center items-center pt-[20px] md:pt-0 text-center">
         <div className="text-white text-[1.2rem] max-w-[1000px] w-[90%]">
