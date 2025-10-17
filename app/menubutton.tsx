@@ -138,26 +138,6 @@ export default function MenuButton() {
               </Link>
             </li>
 
-            {/* 5. Plants (delay-[280ms]) */}
-            <li>
-              <Link href="/shop/plants">
-                <div
-                  onClick={toggleMenu}
-                  className="relative left-1/2 -translate-x-1/2 w-96 h-16 pt-4 text-2xl cursor-pointer"
-                >
-                  <div
-                    className={
-                      modalOpen
-                        ? "transition ease-out duration-[350ms] absolute left-1/2 -translate-x-1/2 opacity-100 delay-[280ms]"
-                        : "transition ease-out duration-[500ms] absolute left-1/2 -translate-x-1/2 -translate-y-10 opacity-0"
-                    }
-                  >
-                    <div className="hover:text-[#cb18db] transition ease-out duration-[100ms]">Plants</div>
-                  </div>
-                </div>
-              </Link>
-            </li>
-
             {/* 6. 3D Prints (delay-[350ms]) */}
             <li>
               <Link href="/shop/prints">
@@ -168,7 +148,7 @@ export default function MenuButton() {
                   <div
                     className={
                       modalOpen
-                        ? "transition ease-out duration-[350ms] absolute left-1/2 -translate-x-1/2 opacity-100 delay-[350ms]"
+                        ? "transition ease-out duration-[350ms] absolute left-1/2 -translate-x-1/2 opacity-100 delay-[280ms]"
                         : "transition ease-out duration-[500ms] absolute left-1/2 -translate-x-1/2 -translate-y-10 opacity-0"
                     }
                   >
@@ -187,7 +167,7 @@ export default function MenuButton() {
                 <div
                   className={
                     modalOpen
-                      ? "transition ease-out duration-[350ms] absolute left-1/2 -translate-x-1/2 opacity-100 delay-[420ms]"
+                      ? "transition ease-out duration-[350ms] absolute left-1/2 -translate-x-1/2 opacity-100 delay-[350ms]"
                       : "transition ease-out duration-[500ms] absolute left-1/2 -translate-x-1/2 -translate-y-10 opacity-0"
                   }
                 >
@@ -205,7 +185,7 @@ export default function MenuButton() {
                 <div
                   className={
                     modalOpen
-                      ? "transition ease-out duration-[350ms] absolute left-1/2 -translate-x-1/2 opacity-100 delay-[490ms]"
+                      ? "transition ease-out duration-[350ms] absolute left-1/2 -translate-x-1/2 opacity-100 delay-[420ms]"
                       : "transition ease-out duration-[500ms] absolute left-1/2 -translate-x-1/2 -translate-y-10 opacity-0"
                   }
                 >
