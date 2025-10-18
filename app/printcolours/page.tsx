@@ -1,20 +1,37 @@
 // app/printcolours/page.tsx
-import fs from "fs";
-import path from "path";
 import Image from "next/image";
 import "../globals.css";
+import connect from "@/app/utils/startMongo";
 
-export default function Home() {
-  const POSTS_DIRECTORY = path.join(process.cwd(), "public", "images", "3dprintcolours");
-  const files = fs
-  .readdirSync(POSTS_DIRECTORY)
-  .filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f))
-  .sort((a, b) => {
-    const numA = parseInt(a, 10);
-    const numB = parseInt(b, 10);
-    return numA - numB;
-  });
-  const images = files.filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));
+type ProductColour = {
+  id: string;
+  name: string;
+  imageUrl: string;
+};
+
+async function getProductColours(): Promise<ProductColour[]> {
+  try {
+    const client = await connect;
+    const colours = await client
+      .db("Products")
+      .collection("ProductColours")
+      .find({})
+      .sort({ sortOrder: 1, createdAt: 1 })
+      .toArray();
+
+    return colours.map((colour: any) => ({
+      id: colour._id?.toString() ?? "",
+      name: colour.name ?? "",
+      imageUrl: colour.imageUrl ?? "",
+    }));
+  } catch (error) {
+    console.error("Failed to load product colours", error);
+    return [];
+  }
+}
+
+export default async function Home() {
+  const colours = await getProductColours();
 
   return (
     <div>
@@ -23,16 +40,26 @@ export default function Home() {
       </div>
 
       <div className="flex flex-wrap justify-center gap-10 pt-[49px] px-4">
-        {images.map((file, index) => (
-          <Image
-            key={index}
-            src={`/images/3dprintcolours/${file}`}
-            width={500}
-            height={500}
-            alt={`3D Print Colour ${index + 1}`}
-            className="w-[80%] max-w-[500px] outline rounded-lg outline-white"
-          />
-        ))}
+        {colours.length > 0 ? (
+          colours.map((colour) => (
+            <div key={colour.id} className="flex flex-col items-center gap-4">
+              <img
+                src={colour.imageUrl}
+                width={500}
+                height={500}
+                alt={colour.name || "3D Print Colour"}
+                className="w-[80%] max-w-[500px] outline rounded-lg outline-white"
+              />
+              {colour.name && (
+                <p className="text-white text-lg text-center font-semibold">
+                  {colour.name}
+                </p>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="text-white text-xl">No colours available right now.</p>
+        )}
       </div>
 
       <br /><br /><br /><br /><br />

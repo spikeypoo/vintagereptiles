@@ -5,6 +5,39 @@ import { ObjectId } from 'bson';
 import { prisma } from "@/app/lib/prisma";
 import stripe from "@/app/lib/stripe";
 
+type IncomingCustomOption = {
+  label?: string;
+  price?: string;
+  imageIndex?: number | null;
+  isColourOption?: boolean;
+  colourIds?: string[];
+  groupName?: string;
+};
+
+function mapOptionWithPrice(opt: IncomingCustomOption, priceId: string) {
+  const label = typeof opt?.label === "string" ? opt.label : "";
+  const price = typeof opt?.price === "string" ? opt.price : "";
+  const imageIndex =
+    typeof opt?.imageIndex === "number" && !Number.isNaN(opt.imageIndex)
+      ? opt.imageIndex
+      : null;
+  const isColourOption = Boolean(opt?.isColourOption);
+  const colourIds =
+    isColourOption && Array.isArray(opt?.colourIds)
+      ? opt.colourIds.map((id) => String(id))
+      : [];
+
+  return {
+    label,
+    price,
+    imageIndex,
+    priceid: priceId,
+    isColourOption,
+    colourIds,
+    groupName: typeof opt?.groupName === "string" ? opt.groupName : undefined,
+  };
+}
+
 export async function GET() {
   const time = Date.now();
   
@@ -44,7 +77,7 @@ export async function POST(request: Request) {
   }
 
   // Parse customOptions
-  let customOptions = [];
+  let customOptions: IncomingCustomOption[] = [];
   const optsJson = form.get("customOptions");
   if (optsJson) {
     try { customOptions = JSON.parse(optsJson.toString()); }
@@ -78,20 +111,25 @@ export async function POST(request: Request) {
     });
 
     const pricedOptions = await Promise.all(
-      customOptions.map(async opt => {
-        // parse user‐entered price
-        const cents = Math.round(Number(opt.price) * 100);
+      customOptions.map(async (opt: IncomingCustomOption) => {
+        if (opt?.isColourOption) {
+          return {
+            label: typeof opt?.label === "string" ? opt.label : "",
+            isColourOption: true,
+            colourIds: Array.isArray(opt?.colourIds)
+              ? opt.colourIds.map((id) => String(id))
+              : [],
+            groupName: typeof opt?.groupName === "string" ? opt.groupName : undefined,
+          };
+        }
+
+        const cents = Math.round(Number(opt?.price || 0) * 100);
         const p = await stripe.prices.create({
-          currency:    "cad",
+          currency: "cad",
           unit_amount: cents,
-          product:     stripeProduct.id,
+          product: stripeProduct.id,
         });
-        return {
-          label:      opt.label,
-          imageIndex: opt.imageIndex,
-          price: opt.price,
-          priceid:    p.id,     // <-- store the Stripe Price ID
-        };
+        return mapOptionWithPrice(opt, p.id);
       })
     );
 
@@ -134,7 +172,7 @@ export async function PUT(request: Request) {
   }
 
   // Parse customOptions
-  let customOptions = [];
+  let customOptions: IncomingCustomOption[] = [];
   const optsJson = form.get("customOptions");
   if (optsJson) {
     try { customOptions = JSON.parse(optsJson.toString()); }
@@ -221,19 +259,25 @@ export async function PUT(request: Request) {
     }
 
     const newPricedOptions = await Promise.all(
-      customOptions.map(async opt => {
-        const cents = Math.round(Number(opt.price) * 100);
+      customOptions.map(async (opt: IncomingCustomOption) => {
+        if (opt?.isColourOption) {
+          return {
+            label: typeof opt?.label === "string" ? opt.label : "",
+            isColourOption: true,
+            colourIds: Array.isArray(opt?.colourIds)
+              ? opt.colourIds.map((id) => String(id))
+              : [],
+            groupName: typeof opt?.groupName === "string" ? opt.groupName : undefined,
+          };
+        }
+
+        const cents = Math.round(Number(opt?.price || 0) * 100);
         const p = await stripe.prices.create({
-          currency:    "cad",
+          currency: "cad",
           unit_amount: cents,
-          product:     isExist.stripeid,
+          product: isExist.stripeid,
         });
-        return {
-          label:      opt.label,
-          imageIndex: opt.imageIndex,
-          price: opt.price,
-          priceid:    p.id,
-        };
+        return mapOptionWithPrice(opt, p.id);
       })
     );
   

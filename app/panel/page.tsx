@@ -3,8 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import "../globals.css";
-import { useState, useEffect } from "react";
-import ReactDOM from "react-dom/client";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Resizer from "react-image-file-resizer";
 import { Switch } from '@/components/ui/switch';
 import { toast } from "sonner";
@@ -26,6 +25,176 @@ const resizeFile = (file) =>
     );
   });
 
+type AdminCustomOption = {
+  label?: string;
+  price?: string;
+  priceid?: string;
+  imageIndex?: number;
+  isColourOption?: boolean;
+  colourIds?: string[];
+  groupName?: string;
+  id?: string;
+};
+
+type AdminItem = {
+  id: string;
+  name: string;
+  description?: string;
+  price: string;
+  stock: string;
+  oldprice?: string;
+  issale: string;
+  images?: string[];
+  customOptions?: AdminCustomOption[];
+};
+
+type ProductColour = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  sortOrder?: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+type CustomOptionChoiceForm = {
+  id: string;
+  label: string;
+  price: string;
+  imageIndex: number | "";
+};
+
+type CustomOptionGroupForm = {
+  id: string;
+  title: string;
+  type: "standard" | "colour";
+  options: CustomOptionChoiceForm[];
+  colourIds: string[];
+};
+
+const PRINT_COLOURS_ROUTE = "/api/product-colours";
+
+const generateId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+function inflateCustomOptionsToGroups(options?: AdminCustomOption[]): CustomOptionGroupForm[] {
+  if (!Array.isArray(options) || options.length === 0) {
+    return [];
+  }
+
+  const groupOrder: string[] = [];
+  const groupMap = new Map<string, CustomOptionGroupForm>();
+
+  options.forEach((opt) => {
+    if (opt?.isColourOption) {
+      const title = (opt.groupName || opt.label || "Colour Option").trim();
+      const key = `colour:${title}`;
+      if (!groupMap.has(key)) {
+        groupOrder.push(key);
+        groupMap.set(key, {
+          id: opt.id || generateId(),
+          title,
+          type: "colour",
+          options: [],
+          colourIds: Array.isArray(opt.colourIds) ? opt.colourIds.map(String) : [],
+        });
+      } else {
+        const existing = groupMap.get(key)!;
+        if (Array.isArray(opt.colourIds)) {
+          const current = new Set(existing.colourIds);
+          opt.colourIds.forEach((id) => current.add(String(id)));
+          existing.colourIds = Array.from(current);
+        }
+      }
+    } else {
+      const title = (opt?.groupName || "Custom Option").trim();
+      const key = `standard:${title}`;
+      if (!groupMap.has(key)) {
+        groupOrder.push(key);
+        groupMap.set(key, {
+          id: generateId(),
+          title,
+          type: "standard",
+          options: [],
+          colourIds: [],
+        });
+      }
+      const group = groupMap.get(key)!;
+      group.options.push({
+        id: opt?.id || generateId(),
+        label: opt?.label ?? "",
+        price: opt?.price ?? "",
+        imageIndex:
+          typeof opt?.imageIndex === "number" && !Number.isNaN(opt.imageIndex)
+            ? opt.imageIndex
+            : "",
+      });
+    }
+  });
+
+  return groupOrder
+    .map((key) => groupMap.get(key)!)
+    .map((group) => {
+      if (group.type === "standard" && group.options.length === 0) {
+        return {
+          ...group,
+          options: [
+            {
+              id: generateId(),
+              label: "",
+              price: "",
+              imageIndex: "",
+            },
+          ],
+        };
+      }
+      return group;
+    });
+}
+
+function flattenCustomOptionGroups(
+  groups: CustomOptionGroupForm[],
+  allowColourGroups: boolean
+): AdminCustomOption[] {
+  const flattened: AdminCustomOption[] = [];
+
+  groups.forEach((group) => {
+    const title = group.title.trim() || (group.type === "colour" ? "Colour Option" : "Custom Option");
+    if (group.type === "standard") {
+      group.options.forEach((opt) => {
+        const label = opt.label.trim();
+        const priceValue = opt.price.trim();
+        if (!label && !priceValue) {
+          return;
+        }
+        flattened.push({
+          id: opt.id,
+          label,
+          price: priceValue || undefined,
+          imageIndex:
+            opt.imageIndex === "" || Number.isNaN(Number(opt.imageIndex))
+              ? undefined
+              : Number(opt.imageIndex),
+          groupName: title,
+        });
+      });
+    } else if (allowColourGroups) {
+      const colourIds = group.colourIds.filter(Boolean);
+      flattened.push({
+        id: group.id,
+        label: title,
+        isColourOption: true,
+        colourIds,
+        groupName: title,
+      });
+    }
+  });
+
+  return flattened;
+}
+
 export default function Home() {
   // Basic form data for ADD
   const [formData, setFormData] = useState({
@@ -37,10 +206,7 @@ export default function Home() {
 
   // Whether custom options are enabled
   const [hasCustomOptions, setHasCustomOptions] = useState(false);
-  // An array of { label: string, imageIndex: number }
-  const [customOptions, setCustomOptions] = useState<
-    { label: string; imageIndex: number; price: string }[]
-  >([]);
+  const [customOptionGroups, setCustomOptionGroups] = useState<CustomOptionGroupForm[]>([]);
 
 
   // Sale state for ADD
@@ -53,11 +219,20 @@ export default function Home() {
   // The selected route (category)
   const [routeData, setRoute] = useState("/api/forsale/availability");
 
+  const [items, setItems] = useState<AdminItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const activeRequests = useRef(0);
+  const [productColours, setProductColours] = useState<ProductColour[]>([]);
+  const [isLoadingColours, setIsLoadingColours] = useState(false);
+  const [colourLoadError, setColourLoadError] = useState<string | null>(null);
+
   // A simple array of categories (label + route)
   const categories = [
     { label: "Geckos", value: "/api/forsale/availability" },
-    { label: "Plants", value: "/api/forsale/plants" },
     { label: "3D Prints", value: "/api/forsale/prints" },
+    { label: "Print Colours", value: PRINT_COLOURS_ROUTE },
     { label: "Isopods", value: "/api/forsale/isopods" },
     { label: "Male Crestie", value: "/api/forsale/breeders/malecrestedgeckos" },
     { label: "Female Crestie", value: "/api/forsale/breeders/femalecrestedgeckos" },
@@ -71,69 +246,172 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   // NEW: track which operation is selected: "add", "edit", or "remove"
-  const [activeOp, setActiveOp] = useState("add"); // default to "add"
+  const [activeOp, setActiveOp] = useState<"add" | "edit" | "remove">("add"); // default to "add"
+  const isPrintColoursRoute = routeData === PRINT_COLOURS_ROUTE;
+  const isPrintsCategory = routeData === "/api/forsale/prints";
 
   // Handle category clicks
   function handleCategoryClick(newRoute) {
     // Only set loading and fetch data if the route is different
     if (newRoute !== routeData) {
-      setLoading(true); // show spinner
       setRoute(newRoute); // triggers useEffect for fetch
+      setSearchTerm("");
     }
   }
 
   // Function to refresh items for the current category
-  async function refreshItems() {
-    try {
-      const result = await fetch(routeData);
-      const dat = await result.json();
-      console.log("Refreshed data:", dat);
-
-      const items = Array.isArray(dat) ? dat : [];
-
-      // 1) Render "Edit" cards
-      let cardsForEdit = items.map((element) => (
-        <CardEdit
-          key={element.id}
-          routeData={routeData}
-          onItemUpdated={refreshItems}
-          {...element}
-        />
-      ));
-      let container = document.getElementById("edit2");
-      if (container) {
-        let to_inject = ReactDOM.createRoot(container);
-        to_inject.render(cardsForEdit);
+  const refreshItems = useCallback(
+    async (signal?: AbortSignal) => {
+      setErrorMessage(null);
+      if (routeData === PRINT_COLOURS_ROUTE) {
+        setItems([]);
+        return [];
       }
+      try {
+        if (activeRequests.current === 0) {
+          setLoading(true);
+        }
+        activeRequests.current += 1;
+        const response = await fetch(routeData, {
+          signal,
+          cache: "no-store",
+        });
 
-      // 2) Render "Remove" cards
-      let cardsForRemove = items.map((element) => (
-        <CardRemove
-          key={element.id}
-          routeData={routeData}
-          onItemDeleted={refreshItems}
-          {...element}
-        />
-      ));
-      container = document.getElementById("remove2");
-      if (container) {
-        let to_inject = ReactDOM.createRoot(container);
-        to_inject.render(cardsForRemove);
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const itemsArray = Array.isArray(data) ? data : [];
+
+        setItems(itemsArray as AdminItem[]);
+        return itemsArray as AdminItem[];
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return [];
+        }
+        console.error("Error refreshing items:", err);
+        setErrorMessage("Failed to load items. Please try again.");
+        return [];
+      } finally {
+        activeRequests.current = Math.max(0, activeRequests.current - 1);
+        if (activeRequests.current === 0) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      console.error("Error refreshing items:", err);
-    }
-  }
+    },
+    [routeData]
+  );
 
-  // Load data from DB each time routeData changes
+  // Load data when the route changes
   useEffect(() => {
-    if (routeData) {
-      setLoading(true);
-      refreshItems().finally(() => {
-        setLoading(false); // hide spinner after refresh completes
-      });
-    }
+    const controller = new AbortController();
+    setItems([]);
+    setErrorMessage(null);
+    refreshItems(controller.signal);
+
+    return () => controller.abort();
+  }, [refreshItems]);
+
+  useEffect(() => {
+    setFormData({ name: "", description: "", price: "", stock: "" });
+    setSale(false);
+    setOldPrice("Not Used");
+    setFiles([]);
+    setHasCustomOptions(false);
+    setCustomOptionGroups([]);
+    setSearchTerm("");
   }, [routeData]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadColours() {
+      setColourLoadError(null);
+      setIsLoadingColours(true);
+      try {
+        const response = await fetch(PRINT_COLOURS_ROUTE, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+        const data = (await response.json()) as ProductColour[];
+        if (!cancelled) {
+          setProductColours(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load product colours:", error);
+          setColourLoadError("Failed to load colour list.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingColours(false);
+        }
+      }
+    }
+
+    loadColours();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasCustomOptions) {
+      setCustomOptionGroups([]);
+    }
+  }, [hasCustomOptions]);
+
+  useEffect(() => {
+    if (!isPrintsCategory) {
+      setCustomOptionGroups((prev) => prev.filter((group) => group.type !== "colour"));
+    }
+  }, [isPrintsCategory]);
+
+  useEffect(() => {
+    const availableIds = new Set(productColours.map((colour) => colour.id));
+    setCustomOptionGroups((prev) =>
+      prev.map((group) => {
+        if (group.type !== "colour") {
+          return group;
+        }
+        const filtered = group.colourIds.filter((id) => availableIds.has(id));
+        const nextIds =
+          filtered.length > 0 || availableIds.size === 0
+            ? filtered
+            : Array.from(availableIds);
+        if (filtered.length === group.colourIds.length) {
+          return group;
+        }
+        return {
+          ...group,
+          colourIds: nextIds,
+        };
+      })
+    );
+  }, [productColours]);
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return items;
+    }
+
+    const lowered = searchTerm.toLowerCase();
+    return items.filter((item) => {
+      const nameMatch = item.name?.toLowerCase().includes(lowered);
+      const idMatch = item.id?.toLowerCase().includes(lowered);
+      return nameMatch || idMatch;
+    });
+  }, [items, searchTerm]);
+
+  const panelClassName = (panel: "add" | "edit" | "remove") =>
+    activeOp === panel ? "" : "hidden pointer-events-none";
+
+  const allColourIds = useMemo(
+    () => productColours.map((colour) => colour.id),
+    [productColours]
+  );
 
   // Handle text changes in the "Add" form
   function handleChange(e) {
@@ -144,7 +422,6 @@ export default function Home() {
   // Toggle sale
   function handleSaleChange() {
     const newValue = !isSale;
-    console.log("Sale toggle changed to:", newValue);
     setSale(newValue);
   }
 
@@ -165,97 +442,104 @@ export default function Home() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
+  const handleColoursChange = useCallback((colours: ProductColour[]) => {
+    setColourLoadError(null);
+    setProductColours(colours);
+  }, []);
+
   // Submit new item
   async function handleSubmit(e) {
     e.preventDefault();
-    console.log("Submitting new item...");
+    if (isSubmitting) {
+      return;
+    }
 
-    // 1) Upload each file to S3
-    let uploadedUrls = [];
-    for (const file of files) {
-      let body = new FormData();
-      const extension = Date.now() + file.name;
-      body.append("imagename", extension);
+    setIsSubmitting(true);
 
-      const signedResp = await fetch("/api/forsale/awsupload", {
-        method: "POST",
-        body,
-      });
-      const { presignedUrl } = await signedResp.json();
+    try {
+      const uploadedUrls = await Promise.all(
+        files.map(async (file, index) => {
+          const sanitizedName = file.name.replace(/\s+/g, "-");
+          const key = `${Date.now()}-${index}-${sanitizedName}`;
+          const body = new FormData();
+          body.append("imagename", key);
 
-      const newimage = await resizeFile(file);
-      const base64Data = Buffer.from(
-        newimage.replace(/^data:\w+\/[a-zA-Z+\-.]+;base64,/, ""),
-        "base64"
+          const signedResp = await fetch("/api/forsale/awsupload", {
+            method: "POST",
+            body,
+          });
+
+          if (!signedResp.ok) {
+            throw new Error("Failed to obtain upload URL");
+          }
+
+          const { presignedUrl } = await signedResp.json();
+
+          const resizedImage = (await resizeFile(file)) as string;
+          const blob = await fetch(resizedImage).then((res) => res.blob());
+
+          await fetch(presignedUrl, {
+            method: "PUT",
+            body: blob,
+          });
+
+          return `https://vintage-reptiles-storage.s3.us-east-2.amazonaws.com/${key}`;
+        })
       );
 
-      await fetch(presignedUrl, {
-        method: "PUT",
-        body: base64Data,
-      });
+      const finalBody = new FormData();
+      finalBody.append("name", formData.name);
+      finalBody.append("description", formData.description);
+      finalBody.append("price", formData.price);
+      finalBody.append("stock", formData.stock);
 
-      const finalUrl =
-        "https://vintage-reptiles-storage.s3.us-east-2.amazonaws.com/" +
-        extension;
-      uploadedUrls.push(finalUrl);
-    }
+      if (isSale) {
+        finalBody.append("issale", "true");
+        finalBody.append("oldprice", olderPrice);
+      } else {
+        finalBody.append("issale", "false");
+        finalBody.append("oldprice", "Not Used");
+      }
 
-    // 2) Build final FormData
-    let finalBody = new FormData();
-    finalBody.append("name", formData.name);
-    finalBody.append("description", formData.description);
-    finalBody.append("price", formData.price);
-    finalBody.append("stock", formData.stock);
+      finalBody.append("images", JSON.stringify(uploadedUrls));
 
-    if (isSale) {
-      finalBody.append("issale", "true");
-      finalBody.append("oldprice", olderPrice);
-    } else {
-      finalBody.append("issale", "false");
-      finalBody.append("oldprice", "Not Used");
-    }
+      if (hasCustomOptions) {
+        const flattened = flattenCustomOptionGroups(customOptionGroups, isPrintsCategory);
+        if (flattened.length > 0) {
+          finalBody.append("customOptions", JSON.stringify(flattened));
+        }
+      }
 
-    // Append the images array
-    finalBody.append("images", JSON.stringify(uploadedUrls));
+      const resp = await fetch(routeData, { method: "POST", body: finalBody });
 
-    if (hasCustomOptions) {
-      finalBody.append("customOptions", JSON.stringify(customOptions));
-    }
+      if (!resp.ok) {
+        throw new Error(`Request failed with status ${resp.status}`);
+      }
 
-    const resp = await fetch(routeData, { method: "POST", body: finalBody });
-    console.log("Created new item. Resp:", resp);
+      await refreshItems();
 
-    // Refresh the displayed items after successful add
-    if (resp.ok) {
-      refreshItems();
       toast("Item Uploaded", {
         description: "The new item has been added successfully.",
       });
-    } else {
+
+      setFormData({ name: "", description: "", price: "", stock: "" });
+      setSale(false);
+      setOldPrice("Not Used");
+      setFiles([]);
+      setHasCustomOptions(false);
+      setCustomOptionGroups([]);
+    } catch (err) {
+      console.error("Failed to create item:", err);
       toast("Upload failed", {
         description: "Failed to upload item. Please try again.",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Reset form
-    setFormData({ name: "", description: "", price: "", stock: "" });
-    setSale(false);
-    setOldPrice("Not Used");
-    setFiles([]);
   }
 
   // Toggle which panel is visible (add, edit, remove) + setActiveOp
-  function handleOptions(button) {
-    ["add", "edit", "remove"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.classList.add("hidden", "pointer-events-none");
-    });
-
-    const target = document.getElementById(button);
-    target?.classList.remove("hidden", "pointer-events-none");
-
-    // Record which operation is selected
+  function handleOptions(button: "add" | "edit" | "remove") {
     setActiveOp(button);
   }
 
@@ -352,9 +636,17 @@ export default function Home() {
               </div>
             </div>
 
+            {isPrintColoursRoute ? (
+              <PrintColoursPanels
+                activeOp={activeOp}
+                initialColours={productColours}
+                onColoursChange={handleColoursChange}
+              />
+            ) : (
+              <>
             {/* ---------------- ADD PANEL ---------------- */}
             {/* Replace the current ADD form with this improved version */}
-            <div id="add">
+            <div id="add" className={`${panelClassName("add")} space-y-4`}>
               <h2 className="text-xl font-bold mb-4 flex items-center">
                 Add New Item
               </h2>
@@ -409,79 +701,17 @@ export default function Home() {
                   </div>
 
                   {hasCustomOptions && (
-                    <div className="mb-6 space-y-2">
-                      <p className="text-gray-400 text-sm">Define Options:</p>
-                      {customOptions.map((opt, idx) => (
-                        <div key={idx} className="flex gap-2 items-center">
-                          {/* Option Label */}
-                          <input
-                            type="text"
-                            placeholder="Option name"
-                            value={opt.label}
-                            onChange={e => {
-                              const newOpts = [...customOptions];
-                              newOpts[idx].label = e.target.value;
-                              setCustomOptions(newOpts);
-                            }}
-                            className="flex-1 p-2 rounded bg-gray-700 text-gray-200"
-                          />
-
-                          {/* Image selector */}
-                          <select
-                            value={opt.imageIndex}
-                            onChange={e => {
-                              const newOpts = [...customOptions];
-                              newOpts[idx].imageIndex = Number(e.target.value);
-                              setCustomOptions(newOpts);
-                            }}
-                            className="p-2 rounded bg-gray-700 text-gray-200"
-                          >
-                            <option value="">Image #</option>
-                            {files.map((_, i) => (
-                              <option key={i} value={i}>
-                                #{i + 1}
-                              </option>
-                            ))}
-                          </select>
-
-                          {/* NEW: Price for this option */}
-                          <div className="relative">
-                            <span className="absolute left-2 top-2 text-gray-400">$</span>
-                            <input
-                              type="text"
-                              placeholder="0.00"
-                              value={opt.price}
-                              onChange={e => {
-                                const newOpts = [...customOptions];
-                                newOpts[idx].price = e.target.value;
-                                setCustomOptions(newOpts);
-                              }}
-                              className="w-20 pl-6 p-2 rounded bg-gray-700 text-gray-200"
-                            />
-                          </div>
-
-                          {/* Remove button */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCustomOptions(customOptions.filter((_, i) => i !== idx))
-                            }
-                            className="text-red-500"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCustomOptions([...customOptions, { label: "", imageIndex: 0, price: "" }])
-                        }
-                        className="text-sm text-purple-400 hover:underline"
-                      >
-                        + Add another option
-                      </button>
+                    <div className="mb-6 space-y-3">
+                      <p className="text-gray-400 text-sm">Define the dropdowns for this product.</p>
+                      <CustomOptionGroupsEditor
+                        groups={customOptionGroups}
+                        onChange={setCustomOptionGroups}
+                        imageOptionsCount={files.length}
+                        productColours={productColours}
+                        allowColourGroups={isPrintsCategory}
+                        isLoadingColours={isLoadingColours}
+                        colourLoadError={colourLoadError}
+                      />
                     </div>
                   )}
 
@@ -591,9 +821,12 @@ export default function Home() {
                 <div className="col-span-full mt-2">
                   <button
                     type="submit"
-                    className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-3 rounded-lg hover:scale-[1.02] transition duration-300 flex items-center justify-center w-full md:w-auto"
+                    disabled={isSubmitting}
+                    className={`bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-3 rounded-lg transition duration-300 flex items-center justify-center w-full md:w-auto ${
+                      isSubmitting ? "opacity-70 cursor-not-allowed" : "hover:scale-[1.02]"
+                    }`}
                   >
-                    Add Product
+                    {isSubmitting ? "Uploading…" : "Add Product"}
                   </button>
                 </div>
               </form>
@@ -602,33 +835,1214 @@ export default function Home() {
             {/* ---------------- EDIT PANEL ---------------- */}
             <div
               id="edit"
-              className="hidden pointer-events-none relative pt-4 transition-opacity"
+              className={`relative pt-4 transition-opacity ${panelClassName("edit")}`}
             >
               <h2 className="text-xl font-bold mb-4">Edit Existing Item</h2>
-              <div
-                id="edit2"
-                className="flex flex-wrap gap-[40px] pt-4 justify-center items-center"
-              >
-                {/* Dynamically populated by ReactDOM.createRoot(...) */}
+              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by name or ID"
+                  className="w-full md:flex-1 rounded-lg bg-gray-700 border border-gray-600 p-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => refreshItems()}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-lg text-sm transition border border-purple-500/60 ${
+                    loading ? "opacity-60 cursor-not-allowed" : "hover:bg-purple-500/10"
+                  }`}
+                >
+                  Refresh
+                </button>
+                <span className="text-xs text-gray-400 whitespace-nowrap">
+                  {filteredItems.length} item{filteredItems.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              {errorMessage && (
+                <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {errorMessage}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-6 pt-2 justify-center items-start">
+                {filteredItems.length > 0 ? (
+                  filteredItems.map((element) => (
+                    <CardEdit
+                      key={element.id}
+                      routeData={routeData}
+                      onItemUpdated={refreshItems}
+                      productColours={productColours}
+                      productColoursLoading={isLoadingColours}
+                      colourLoadError={colourLoadError}
+                      {...element}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-10">
+                    {items.length === 0
+                      ? "No items in this category yet."
+                      : "No results match your search."}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* ---------------- REMOVE PANEL ---------------- */}
             <div
               id="remove"
-              className="hidden pointer-events-none relative pt-4 transition-opacity"
+              className={`relative pt-4 transition-opacity ${panelClassName("remove")}`}
             >
               <h2 className="text-xl font-bold mb-4">Remove Item</h2>
-              <div
-                id="remove2"
-                className="flex flex-wrap gap-[40px] pt-4 justify-center items-center"
-              >
-                {/* Dynamically populated by ReactDOM.createRoot(...) */}
+              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by name or ID"
+                  className="w-full md:flex-1 rounded-lg bg-gray-700 border border-gray-600 p-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => refreshItems()}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-lg text-sm transition border border-purple-500/60 ${
+                    loading ? "opacity-60 cursor-not-allowed" : "hover:bg-purple-500/10"
+                  }`}
+                >
+                  Refresh
+                </button>
+                <span className="text-xs text-gray-400 whitespace-nowrap">
+                  {filteredItems.length} item{filteredItems.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              {errorMessage && (
+                <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {errorMessage}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-6 pt-2 justify-center items-start">
+                {filteredItems.length > 0 ? (
+                  filteredItems.map((element) => (
+                    <CardRemove
+                      key={element.id}
+                      routeData={routeData}
+                      onItemDeleted={refreshItems}
+                      {...element}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-10">
+                    {items.length === 0
+                      ? "No items in this category yet."
+                      : "No results match your search."}
+                  </div>
+                )}
               </div>
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+type PrintColoursPanelsProps = {
+  activeOp: "add" | "edit" | "remove";
+  initialColours?: ProductColour[];
+  onColoursChange?: (colours: ProductColour[]) => void;
+};
+
+function PrintColoursPanels({
+  activeOp,
+  initialColours,
+  onColoursChange,
+}: PrintColoursPanelsProps) {
+  const newDraft = () => ({
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: "",
+    file: null as File | null,
+    preview: null as string | null,
+  });
+  const [colours, setColours] = useState<ProductColour[]>(initialColours ?? []);
+  const [isFetching, setIsFetching] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [colourDrafts, setColourDrafts] = useState(() => [newDraft()]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const draftsRef = useRef(colourDrafts);
+
+  useEffect(() => {
+    if (initialColours) {
+      setColours(initialColours);
+    }
+  }, [initialColours]);
+
+  useEffect(() => {
+    draftsRef.current = colourDrafts;
+  }, [colourDrafts]);
+
+  useEffect(() => {
+    return () => {
+      draftsRef.current.forEach((draft) => {
+        if (draft.preview) {
+          URL.revokeObjectURL(draft.preview);
+        }
+      });
+    };
+  }, []);
+
+  const refreshColours = useCallback(async () => {
+    setErrorMessage(null);
+    setIsFetching(true);
+    try {
+      const response = await fetch(PRINT_COLOURS_ROUTE, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const data = (await response.json()) as ProductColour[];
+      setColours(data);
+      onColoursChange?.(data);
+    } catch (error) {
+      console.error("Failed to load product colours:", error);
+      setErrorMessage("Failed to load colours. Please try again.");
+    } finally {
+      setIsFetching(false);
+    }
+  }, [onColoursChange]);
+
+  useEffect(() => {
+    refreshColours();
+  }, [refreshColours]);
+
+  const filteredColours = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return colours;
+    }
+    const lowered = searchTerm.toLowerCase();
+    return colours.filter((colour) =>
+      colour.name?.toLowerCase().includes(lowered)
+    );
+  }, [colours, searchTerm]);
+
+  const uploadImage = useCallback(async (file: File) => {
+    const sanitizedName = file.name.replace(/\s+/g, "-");
+    const key = `product-colours/${Date.now()}-${sanitizedName}`;
+    const formData = new FormData();
+    formData.append("imagename", key);
+
+    const signedResp = await fetch("/api/forsale/awsupload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!signedResp.ok) {
+      throw new Error("Failed to obtain upload URL");
+    }
+
+    const { presignedUrl } = await signedResp.json();
+    const resizedImage = (await resizeFile(file)) as string;
+    const blob = await fetch(resizedImage).then((res) => res.blob());
+
+    await fetch(presignedUrl, {
+      method: "PUT",
+      body: blob,
+    });
+
+    return `https://vintage-reptiles-storage.s3.us-east-2.amazonaws.com/${key}`;
+  }, []);
+
+  const updateColour = useCallback(
+    async (
+      id: string,
+      updates: { name?: string; imageUrl?: string }
+    ): Promise<ProductColour> => {
+      const response = await fetch(PRINT_COLOURS_ROUTE, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id,
+          ...updates,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const updated = (await response.json()) as ProductColour;
+
+      setColours((prev) => {
+        const updatedList = prev.map((colour) =>
+          colour.id === id ? updated : colour
+        );
+        onColoursChange?.(updatedList);
+        return updatedList;
+      });
+
+      return updated;
+    },
+    [onColoursChange]
+  );
+
+  const deleteColour = useCallback(async (id: string) => {
+    const response = await fetch(PRINT_COLOURS_ROUTE, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    setColours((prev) => {
+      const updatedList = prev.filter((colour) => colour.id !== id);
+      onColoursChange?.(updatedList);
+      return updatedList;
+    });
+  }, [onColoursChange]);
+
+  function handleDraftNameChange(id: string, value: string) {
+    setColourDrafts((prev) =>
+      prev.map((draft) =>
+        draft.id === id ? { ...draft, name: value } : draft
+      )
+    );
+  }
+
+  function handleDraftFileChange(id: string, event) {
+    const file = event.target.files?.[0] ?? null;
+    setColourDrafts((prev) =>
+      prev.map((draft) => {
+        if (draft.id !== id) {
+          return draft;
+        }
+        if (draft.preview) {
+          URL.revokeObjectURL(draft.preview);
+        }
+        return {
+          ...draft,
+          file,
+          preview: file ? URL.createObjectURL(file) : null,
+        };
+      })
+    );
+  }
+
+  function handleAddDraft() {
+    setColourDrafts((prev) => [...prev, newDraft()]);
+  }
+
+  function handleRemoveDraft(id: string) {
+    setColourDrafts((prev) => {
+      const draftToRemove = prev.find((draft) => draft.id === id);
+      if (draftToRemove?.preview) {
+        URL.revokeObjectURL(draftToRemove.preview);
+      }
+      const next = prev.filter((draft) => draft.id !== id);
+      if (next.length === 0) {
+        return [newDraft()];
+      }
+      return next;
+    });
+  }
+
+  async function handleAddColour(event) {
+    event.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+    setFormError(null);
+
+    const draftsToSubmit = colourDrafts.filter(
+      (draft) => draft.name.trim() !== "" || draft.file !== null
+    );
+
+    if (draftsToSubmit.length === 0) {
+      setFormError("Add at least one colour with a name and image.");
+      return;
+    }
+
+    for (const draft of draftsToSubmit) {
+      if (!draft.name.trim()) {
+        setFormError("Every colour needs a name.");
+        return;
+      }
+      if (!draft.file) {
+        setFormError("Every colour needs an image selected.");
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      for (const draft of draftsToSubmit) {
+        const imageUrl = await uploadImage(draft.file as File);
+        const response = await fetch(PRINT_COLOURS_ROUTE, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: draft.name.trim(),
+            imageUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+      }
+
+      await refreshColours();
+      toast("Colours added", {
+        description: `${draftsToSubmit.length} new colour${
+          draftsToSubmit.length === 1 ? "" : "s"
+        } saved successfully.`,
+      });
+      colourDrafts.forEach((draft) => {
+        if (draft.preview) {
+          URL.revokeObjectURL(draft.preview);
+        }
+      });
+      setColourDrafts([newDraft()]);
+    } catch (error) {
+      console.error("Failed to add colour:", error);
+      setFormError("Failed to add colour. Please try again.");
+      toast("Upload failed", {
+        description: "Could not add the colour. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {activeOp === "add" && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold mb-4 flex items-center">
+            Add New Print Colour
+          </h2>
+          <form onSubmit={handleAddColour} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6">
+              {colourDrafts.map((draft, index) => (
+                <div
+                  key={draft.id}
+                  className="rounded-xl border border-gray-700 p-4 space-y-4 bg-gray-900/40"
+                >
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-white">
+                      Colour {index + 1}
+                    </h3>
+                    {colourDrafts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDraft(draft.id)}
+                        className="text-sm text-red-400 hover:text-red-300 transition"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-2 text-gray-300 text-sm">
+                      Colour Name
+                    </label>
+                    <input
+                      value={draft.name}
+                      onChange={(event) =>
+                        handleDraftNameChange(draft.id, event.target.value)
+                      }
+                      className="block w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                      type="text"
+                      placeholder="e.g. Galaxy Purple"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-2 text-gray-300 text-sm">
+                      Colour Image
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) =>
+                        handleDraftFileChange(draft.id, event)
+                      }
+                      className="block w-full text-sm text-gray-200 file:mr-4 file:rounded-md file:border-0 file:bg-[#9d00ff] file:px-4 file:py-2 file:text-white file:cursor-pointer"
+                    />
+                    {draft.preview && (
+                      <div className="mt-4 flex justify-center">
+                        <img
+                          src={draft.preview}
+                          alt={`Preview for ${draft.name || `Colour ${index + 1}`}`}
+                          className="h-32 w-32 object-cover rounded-lg border border-gray-700 shadow-lg"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleAddDraft}
+                className="px-4 py-2 rounded-lg border border-purple-500/60 text-sm text-purple-200 hover:bg-purple-500/10 transition"
+              >
+                + More colours
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`px-6 py-2 rounded-lg bg-[#9d00ff] hover:bg-[#7b00c5] transition ${
+                  isSubmitting ? "opacity-60 cursor-not-allowed" : ""
+                }`}
+              >
+                {isSubmitting
+                  ? "Saving..."
+                  : `Add ${colourDrafts.length} Colour${
+                      colourDrafts.length === 1 ? "" : "s"
+                    }`}
+              </button>
+            </div>
+
+            {formError && (
+              <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {formError}
+              </div>
+            )}
+          </form>
+        </div>
+      )}
+
+      {(activeOp === "edit" || activeOp === "remove") && (
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by colour name"
+              className="w-full md:flex-1 rounded-lg bg-gray-700 border border-gray-600 p-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+            />
+            <button
+              type="button"
+              onClick={() => refreshColours()}
+              disabled={isFetching}
+              className={`px-4 py-2 rounded-lg text-sm transition border border-purple-500/60 ${
+                isFetching
+                  ? "opacity-60 cursor-not-allowed"
+                  : "hover:bg-purple-500/10"
+              }`}
+            >
+              Refresh
+            </button>
+            <span className="text-xs text-gray-400 whitespace-nowrap">
+              {filteredColours.length} colour
+              {filteredColours.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          {errorMessage && (
+            <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {errorMessage}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-6 pt-2 justify-center items-start">
+            {isFetching && colours.length === 0 ? (
+              <div className="text-gray-400 py-10">Loading colours...</div>
+            ) : filteredColours.length > 0 ? (
+              filteredColours.map((colour) =>
+                activeOp === "edit" ? (
+                  <ColourEditCard
+                    key={colour.id}
+                    colour={colour}
+                    onSave={updateColour}
+                    uploadImage={uploadImage}
+                  />
+                ) : (
+                  <ColourRemoveCard
+                    key={colour.id}
+                    colour={colour}
+                    onDelete={deleteColour}
+                  />
+                )
+              )
+            ) : (
+              <div className="text-center text-gray-400 py-10">
+                {colours.length === 0
+                  ? "No colours added yet."
+                  : "No results match your search."}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type ColourEditCardProps = {
+  colour: ProductColour;
+  onSave: (
+    id: string,
+    updates: { name?: string; imageUrl?: string }
+  ) => Promise<ProductColour>;
+  uploadImage: (file: File) => Promise<string>;
+};
+
+function ColourEditCard({ colour, onSave, uploadImage }: ColourEditCardProps) {
+  const [name, setName] = useState(colour.name ?? "");
+  const [newFile, setNewFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setName(colour.name ?? "");
+  }, [colour.name]);
+
+  useEffect(
+    () => () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    },
+    [preview]
+  );
+
+  function handleFileChange(event) {
+    const file = event.target.files?.[0] ?? null;
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+    setNewFile(file);
+    setPreview(file ? URL.createObjectURL(file) : null);
+  }
+
+  async function handleSave() {
+    if (isSaving) {
+      return;
+    }
+
+    const updates: { name?: string; imageUrl?: string } = {};
+    const trimmedName = name.trim();
+    if (trimmedName && trimmedName !== colour.name) {
+      updates.name = trimmedName;
+    }
+
+    try {
+      setIsSaving(true);
+      if (newFile) {
+        updates.imageUrl = await uploadImage(newFile);
+      }
+
+      if (Object.keys(updates).length === 0) {
+        toast("No changes to save", {
+          description: "Update the name or choose a new image first.",
+        });
+        return;
+      }
+
+      const updated = await onSave(colour.id, updates);
+      setName(updated.name ?? "");
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+      setPreview(null);
+      setNewFile(null);
+      toast("Colour updated", {
+        description: "Changes saved successfully.",
+      });
+    } catch (error) {
+      console.error("Failed to update colour:", error);
+      toast("Update failed", {
+        description: "Could not update the colour. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="bg-gray-800 rounded-xl overflow-hidden shadow-md w-[220px] border border-transparent hover:border-purple-900/40 transition-all">
+      <div className="h-[150px] relative">
+        <img
+          src={preview || colour.imageUrl}
+          alt={colour.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="p-4 space-y-3">
+        <input
+          type="text"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className="w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 text-sm"
+          placeholder="Colour name"
+        />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="block w-full text-sm text-gray-200 file:mr-3 file:rounded-md file:border-0 file:bg-gray-600 file:px-3 file:py-1.5 file:text-white file:cursor-pointer"
+        />
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className={`w-full bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-1.5 text-sm transition ${
+            isSaving ? "opacity-60 cursor-not-allowed" : ""
+          }`}
+        >
+          {isSaving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type ColourRemoveCardProps = {
+  colour: ProductColour;
+  onDelete: (id: string) => Promise<void>;
+};
+
+function ColourRemoveCard({ colour, onDelete }: ColourRemoveCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete(colour.id);
+      toast("Colour removed", {
+        description: `${colour.name || "Colour"} deleted successfully.`,
+      });
+    } catch (error) {
+      console.error("Failed to delete colour:", error);
+      toast("Delete failed", {
+        description: "Could not delete the colour. Please try again.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  return (
+    <div className="bg-gray-800 rounded-xl overflow-hidden shadow-md w-[220px] border border-transparent hover:border-red-900/40 transition-all">
+      <div className="h-[150px] relative">
+        <img
+          src={colour.imageUrl}
+          alt={colour.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="p-4 space-y-3">
+        <h3 className="font-medium text-white truncate text-center">
+          {colour.name || "Untitled Colour"}
+        </h3>
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className={`w-full bg-red-700 hover:bg-red-600 text-white rounded-lg py-1.5 text-sm transition ${
+            isDeleting ? "opacity-60 cursor-not-allowed" : ""
+          }`}
+        >
+          {isDeleting ? "Removing..." : "Remove Colour"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type CustomOptionGroupsEditorProps = {
+  groups: CustomOptionGroupForm[];
+  onChange: React.Dispatch<React.SetStateAction<CustomOptionGroupForm[]>>;
+  imageOptionsCount: number;
+  productColours: ProductColour[];
+  allowColourGroups: boolean;
+  isLoadingColours: boolean;
+  colourLoadError: string | null;
+};
+
+function CustomOptionGroupsEditor({
+  groups,
+  onChange,
+  imageOptionsCount,
+  productColours,
+  allowColourGroups,
+  isLoadingColours,
+  colourLoadError,
+}: CustomOptionGroupsEditorProps) {
+  const imageIndices = useMemo(
+    () => Array.from({ length: imageOptionsCount }, (_, i) => i),
+    [imageOptionsCount]
+  );
+
+  const allColourIds = useMemo(
+    () => productColours.map((colour) => colour.id),
+    [productColours]
+  );
+
+  const addGroup = useCallback(
+    (type: "standard" | "colour") => {
+      if (type === "colour" && !allowColourGroups) {
+        return;
+      }
+      onChange((prev) => [
+        ...prev,
+        type === "standard"
+          ? {
+              id: generateId(),
+              title: `Option Group ${prev.filter((g) => g.type === "standard").length + 1}`,
+              type: "standard" as const,
+              options: [
+                {
+                  id: generateId(),
+                  label: "",
+                  price: "",
+                  imageIndex: "" as const,
+                },
+              ],
+              colourIds: [],
+            }
+          : {
+              id: generateId(),
+              title: `Colour`,
+              type: "colour" as const,
+              options: [],
+              colourIds: [...allColourIds],
+            },
+      ]);
+    },
+    [allowColourGroups, onChange, allColourIds]
+  );
+
+  const updateGroupTitle = useCallback(
+    (groupId: string, title: string) => {
+      onChange((prev) =>
+        prev.map((group) =>
+          group.id === groupId
+            ? {
+                ...group,
+                title,
+              }
+            : group
+        )
+      );
+    },
+    [onChange]
+  );
+
+  const changeGroupType = useCallback(
+    (groupId: string, type: "standard" | "colour") => {
+      if (type === "colour" && !allowColourGroups) {
+        return;
+      }
+      onChange((prev) =>
+        prev.map((group) => {
+          if (group.id !== groupId) {
+            return group;
+          }
+          if (group.type === type) {
+            return group;
+          }
+          if (type === "standard") {
+            return {
+              ...group,
+              type,
+              options: [
+                {
+                  id: generateId(),
+                  label: "",
+                  price: "",
+                  imageIndex: "" as const,
+                },
+              ],
+              colourIds: [],
+            };
+          }
+          return {
+            ...group,
+            type,
+            options: [],
+            colourIds: [...allColourIds],
+          };
+        })
+      );
+    },
+    [allowColourGroups, allColourIds, onChange]
+  );
+
+  const removeGroup = useCallback(
+    (groupId: string) => {
+      onChange((prev) => prev.filter((group) => group.id !== groupId));
+    },
+    [onChange]
+  );
+
+  const addChoiceToGroup = useCallback(
+    (groupId: string) => {
+      onChange((prev) =>
+        prev.map((group) => {
+          if (group.id !== groupId || group.type !== "standard") {
+            return group;
+          }
+          return {
+            ...group,
+            options: [
+              ...group.options,
+              {
+                id: generateId(),
+                label: "",
+                price: "",
+                imageIndex: "" as const,
+              },
+            ],
+          };
+        })
+      );
+    },
+    [onChange]
+  );
+
+  const updateChoiceField = useCallback(
+    (groupId: string, choiceId: string, field: "label" | "price" | "imageIndex", value: string) => {
+      onChange((prev) =>
+        prev.map((group) => {
+          if (group.id !== groupId || group.type !== "standard") {
+            return group;
+          }
+          return {
+            ...group,
+            options: group.options.map((choice) => {
+              if (choice.id !== choiceId) {
+                return choice;
+              }
+              if (field === "label") {
+                return { ...choice, label: value };
+              }
+              if (field === "price") {
+                return { ...choice, price: value };
+              }
+              return {
+                ...choice,
+                imageIndex: value === "" || Number.isNaN(Number(value)) ? "" : Number(value),
+              };
+            }),
+          };
+        })
+      );
+    },
+    [onChange]
+  );
+
+  const removeChoiceFromGroup = useCallback(
+    (groupId: string, choiceId: string) => {
+      onChange((prev) =>
+        prev.map((group) => {
+          if (group.id !== groupId || group.type !== "standard") {
+            return group;
+          }
+          const remaining = group.options.filter((choice) => choice.id !== choiceId);
+          return {
+            ...group,
+            options:
+              remaining.length > 0
+                ? remaining
+                : [
+                    {
+                      id: generateId(),
+                      label: "",
+                      price: "",
+                      imageIndex: "" as const,
+                    },
+                  ],
+          };
+        })
+      );
+    },
+    [onChange]
+  );
+
+  const toggleColourInGroup = useCallback(
+    (groupId: string, colourId: string) => {
+      onChange((prev) =>
+        prev.map((group) => {
+          if (group.id !== groupId || group.type !== "colour") {
+            return group;
+          }
+          const selected = new Set(group.colourIds);
+          if (selected.has(colourId)) {
+            selected.delete(colourId);
+          } else {
+            selected.add(colourId);
+          }
+          return {
+            ...group,
+            colourIds: Array.from(selected),
+          };
+        })
+      );
+    },
+    [onChange]
+  );
+
+  const selectAllColoursForGroup = useCallback(
+    (groupId: string) => {
+      onChange((prev) =>
+        prev.map((group) => {
+          if (group.id !== groupId || group.type !== "colour") {
+            return group;
+          }
+          return {
+            ...group,
+            colourIds: [...allColourIds],
+          };
+        })
+      );
+    },
+    [allColourIds, onChange]
+  );
+
+  const clearColoursForGroup = useCallback(
+    (groupId: string) => {
+      onChange((prev) =>
+        prev.map((group) => {
+          if (group.id !== groupId || group.type !== "colour") {
+            return group;
+          }
+          return {
+            ...group,
+            colourIds: [],
+          };
+        })
+      );
+    },
+    [onChange]
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => addGroup("standard")}
+          className="rounded border border-purple-500/60 px-3 py-2 text-sm text-purple-200 transition hover:bg-purple-500/10"
+        >
+          + Add standard option group
+        </button>
+        <button
+          type="button"
+          onClick={() => addGroup("colour")}
+          disabled={!allowColourGroups}
+          className={`rounded border px-3 py-2 text-sm transition ${
+            allowColourGroups
+              ? "border-blue-500/60 text-blue-200 hover:bg-blue-500/10"
+              : "border-gray-700 text-gray-500 cursor-not-allowed"
+          }`}
+        >
+          + Add colour dropdown
+        </button>
+      </div>
+
+      {groups.length === 0 ? (
+        <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm text-gray-300">
+          No custom option groups yet. Use the buttons above to add a dropdown.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {groups.map((group) => {
+            const isColour = group.type === "colour";
+            const selectedCount = group.colourIds.length;
+            const totalColours = productColours.length;
+
+            return (
+              <div
+                key={group.id}
+                className="space-y-4 rounded-lg border border-gray-700 bg-gray-900/40 p-4"
+              >
+                <div className="flex flex-col gap-3 md:items-start">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-300 mb-1">Group title</label>
+                    <input
+                      value={group.title}
+                      onChange={(event) => updateGroupTitle(group.id, event.target.value)}
+                      placeholder={isColour ? "e.g. Primary Colour" : "e.g. Size"}
+                      className="w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                    />
+                  </div>
+                  <div className="md:w-48">
+                    <label className="block text-sm text-gray-300 mb-1">Group type</label>
+                    <select
+                      value={group.type}
+                      onChange={(event) =>
+                        changeGroupType(group.id, event.target.value as "standard" | "colour")
+                      }
+                      className="w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                    >
+                      <option value="standard">Standard</option>
+                      <option value="colour" disabled={!allowColourGroups}>
+                        Colour
+                      </option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeGroup(group.id)}
+                    className="text-red-400 transition hover:text-red-300 md:self-center"
+                  >
+                    Remove group
+                  </button>
+                </div>
+
+              {group.type === "standard" ? (
+                <div className="space-y-3">
+                  {group.options.map((option) => (
+                    <div
+                      key={option.id}
+                      className="flex flex-col gap-2 md:items-center md:gap-3"
+                    >
+                      <input
+                        type="text"
+                        value={option.label}
+                        onChange={(event) =>
+                          updateChoiceField(group.id, option.id, "label", event.target.value)
+                        }
+                        placeholder="Option label"
+                        className="w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                      />
+                      <select
+                        value={option.imageIndex}
+                        onChange={(event) =>
+                          updateChoiceField(group.id, option.id, "imageIndex", event.target.value)
+                        }
+                        className="w-full md:w-32 rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                      >
+                        <option value="">Image #</option>
+                        {imageIndices.map((index) => (
+                          <option key={index} value={index}>
+                            #{index + 1}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="relative w-full md:w-32">
+                        <span className="absolute left-2 top-2 text-gray-400">$</span>
+                        <input
+                          type="text"
+                          value={option.price}
+                          onChange={(event) =>
+                            updateChoiceField(group.id, option.id, "price", event.target.value)
+                          }
+                          placeholder="0.00"
+                          className="w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 pl-6"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeChoiceFromGroup(group.id, option.id)}
+                        className="text-red-400 transition hover:text-red-300 md:self-center"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => addChoiceToGroup(group.id)}
+                    className="text-sm text-purple-400 transition hover:underline"
+                  >
+                    + Add option
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[200px] overflow-y-auto">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
+                    <span>
+                      Select colours ({selectedCount}/{totalColours})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => selectAllColoursForGroup(group.id)}
+                      className="rounded border border-purple-500/60 px-2 py-1 text-xs text-purple-200 transition hover:bg-purple-500/10"
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => clearColoursForGroup(group.id)}
+                      className="rounded border border-gray-600 px-2 py-1 text-xs text-gray-300 transition hover:bg-gray-700/60"
+                    >
+                      Clear
+                    </button>
+                    {colourLoadError && (
+                      <span className="text-xs text-red-400">{colourLoadError}</span>
+                    )}
+                  </div>
+
+                  {isLoadingColours && totalColours === 0 ? (
+                    <div className="text-sm text-gray-400">Loading colour list...</div>
+                  ) : totalColours === 0 ? (
+                    <div className="text-sm text-gray-400">
+                      No colours available. Add colours in the &ldquo;Print Colours&rdquo; tab.
+                    </div>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {productColours.map((colour) => {
+                        const isSelected = group.colourIds.includes(colour.id);
+                        return (
+                          <label
+                            key={colour.id}
+                            className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition ${
+                              isSelected
+                                ? "border-purple-500 bg-purple-500/10"
+                                : "border-gray-700 hover:border-purple-500/40"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-purple-500 focus:ring-purple-500"
+                              checked={isSelected}
+                              onChange={() => toggleColourInGroup(group.id, colour.id)}
+                            />
+                            <span className="text-gray-200">
+                              {colour.name || "Untitled colour"}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -710,6 +2124,7 @@ function CardEdit(props) {
       {isModalOpen && (
         <ModalEdit
           {...props}
+          allowColourOptions={props.routeData === "/api/forsale/prints"}
           onClose={() => {
             setIsModalOpen(false);
             document.body.classList.remove("overflow-hidden");
@@ -838,6 +2253,10 @@ function ModalEdit({
   routeData,
   onUpdate,
   customOptions = [],
+  productColours = [],
+  productColoursLoading = false,
+  colourLoadError,
+  allowColourOptions = false,
 }) {
   // We clone the existing images into state so we can remove them
   const [localImages, setLocalImages] = useState([...images]);
@@ -861,19 +2280,48 @@ function ModalEdit({
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [touchStartPos, setTouchStartPos] = useState({ x: 0, y: 0 });
 
-  const [hasCustomOptions, setHasCustomOptions] = useState(
-    Array.isArray(customOptions) && customOptions.length > 0
-  );
-  // The array of { label, imageIndex }
-  const [options, setOptions] = useState<
-    { label: string; imageIndex: number; price: string }[]
-  >(
-    (customOptions || []).map(opt => ({
-      label: opt.label,
-      imageIndex: opt.imageIndex,
-      price: opt.price ?? ""
-    }))
-  );
+  const initialOptionGroups = useMemo(() => {
+    const groups = inflateCustomOptionsToGroups(customOptions);
+    return allowColourOptions ? groups : groups.filter((group) => group.type !== "colour");
+  }, [customOptions, allowColourOptions]);
+  const [optionGroups, setOptionGroups] = useState<CustomOptionGroupForm[]>(initialOptionGroups);
+  const [hasCustomOptions, setHasCustomOptions] = useState(initialOptionGroups.length > 0);
+
+  useEffect(() => {
+    if (!hasCustomOptions) {
+      setOptionGroups([]);
+    }
+  }, [hasCustomOptions]);
+
+  useEffect(() => {
+    if (!allowColourOptions) {
+      setOptionGroups((prev) => prev.filter((group) => group.type !== "colour"));
+    }
+  }, [allowColourOptions]);
+
+  useEffect(() => {
+    const availableIds = new Set(productColours.map((colour) => colour.id));
+    setOptionGroups((prev) =>
+      prev.map((group) => {
+        if (group.type !== "colour") {
+          return group;
+        }
+        const filtered = group.colourIds.filter((id) => availableIds.has(id));
+        const nextIds =
+          filtered.length > 0 || availableIds.size === 0
+            ? filtered
+            : Array.from(availableIds);
+        if (filtered.length === group.colourIds.length) {
+          return group;
+        }
+        return {
+          ...group,
+          colourIds: nextIds,
+        };
+      })
+    );
+  }, [productColours]);
+  const [isSaving, setIsSaving] = useState(false);
 
   function handleDragStart(e, index) {
     setDraggedIndex(index);
@@ -1022,75 +2470,92 @@ function ModalEdit({
 
   async function handleSubmit(e) {
     e.preventDefault();
-    console.log("Editing item:", id);
+    if (isSaving) {
+      return;
+    }
 
-    // 1) If user selected new images, upload them
-    let newUrls = [];
-    if (newFiles.length > 0) {
-      for (const file of newFiles) {
-        let body = new FormData();
-        const extension = Date.now() + file.name;
-        body.append("imagename", extension);
+    setIsSaving(true);
 
-        const signedResp = await fetch("/api/forsale/awsupload", {
-          method: "POST",
-          body,
-        });
-        const { presignedUrl } = await signedResp.json();
+    try {
+      let newUrls: string[] = [];
 
-        const resized = await resizeFile(file);
-        const base64Data = Buffer.from(
-          resized.replace(/^data:\w+\/[a-zA-Z+\-.]+;base64,/, ""),
-          "base64"
-        );
-        await fetch(presignedUrl, {
-          method: "PUT",
-          body: base64Data,
-        });
-        newUrls.push(
-          "https://vintage-reptiles-storage.s3.us-east-2.amazonaws.com/" +
-          extension
+      if (newFiles.length > 0) {
+        newUrls = await Promise.all(
+          newFiles.map(async (file, index) => {
+            const sanitizedName = file.name.replace(/\s+/g, "-");
+            const key = `${Date.now()}-${index}-${sanitizedName}`;
+            const body = new FormData();
+            body.append("imagename", key);
+
+            const signedResp = await fetch("/api/forsale/awsupload", {
+              method: "POST",
+              body,
+            });
+
+            if (!signedResp.ok) {
+              throw new Error("Failed to obtain upload URL");
+            }
+
+            const { presignedUrl } = await signedResp.json();
+
+            const resized = (await resizeFile(file)) as string;
+            const blob = await fetch(resized).then((res) => res.blob());
+
+            await fetch(presignedUrl, {
+              method: "PUT",
+              body: blob,
+            });
+
+            return `https://vintage-reptiles-storage.s3.us-east-2.amazonaws.com/${key}`;
+          })
         );
       }
-    }
 
-    // 2) Combine existing images + newly uploaded (both can be removed/added)
-    const updatedImages = [...localImages, ...newUrls].slice(0, 16);
+      const updatedImages = [...localImages, ...newUrls].slice(0, 16);
 
-    // 3) Build the form data
-    const finalBody = new FormData();
-    finalBody.append("id2", id); // or "id"? depends on your server
-    finalBody.append("name", editData.name);
-    finalBody.append("description", editData.description);
-    finalBody.append("price", editData.price);
-    finalBody.append("stock", editData.stock);
+      const finalBody = new FormData();
+      finalBody.append("id2", id);
+      finalBody.append("name", editData.name);
+      finalBody.append("description", editData.description);
+      finalBody.append("price", editData.price);
+      finalBody.append("stock", editData.stock);
 
-    if (isSale) {
-      finalBody.append("issale", "true");
-      finalBody.append("oldprice", editData.oldprice);
-    } else {
-      finalBody.append("issale", "false");
-      finalBody.append("oldprice", "Not Used");
-    }
+      if (isSale) {
+        finalBody.append("issale", "true");
+        finalBody.append("oldprice", editData.oldprice);
+      } else {
+        finalBody.append("issale", "false");
+        finalBody.append("oldprice", "Not Used");
+      }
 
-    finalBody.append("images", JSON.stringify(updatedImages));
+      finalBody.append("images", JSON.stringify(updatedImages));
 
-    if (hasCustomOptions) {
-      finalBody.append("customOptions", JSON.stringify(options));
-    }
+      if (hasCustomOptions) {
+        const flattened = flattenCustomOptionGroups(optionGroups, allowColourOptions);
+        finalBody.append("customOptions", JSON.stringify(flattened));
+      } else {
+        finalBody.append("customOptions", JSON.stringify([]));
+      }
 
-    // 4) Send to DB route
-    const resp = await fetch(routeData, { method: "PUT", body: finalBody });
-    if (resp.ok) {
-      onUpdate();
-      toast("Item Edited", {
-        description: "Your changes have been saved successfully.",
-      });
-      handleExit();
-    } else {
+      const resp = await fetch(routeData, { method: "PUT", body: finalBody });
+      if (resp.ok) {
+        onUpdate();
+        toast("Item Edited", {
+          description: "Your changes have been saved successfully.",
+        });
+        handleExit();
+      } else {
+        toast("Edit failed", {
+          description: "Failed to edit item. Please try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update item:", error);
       toast("Edit failed", {
         description: "Failed to edit item. Please try again.",
       });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -1170,80 +2635,18 @@ function ModalEdit({
               </div>
 
               {hasCustomOptions && (
-                <div className="mt-3 max-h-60 overflow-y-auto space-y-2">
-                  {options.map((opt, idx) => (
-                    <div key={idx} className="flex flex-wrap items-center gap-2">
-                      {/* Option label */}
-                      <input
-                        type="text"
-                        value={opt.label}
-                        onChange={e => {
-                          const arr = [...options];
-                          arr[idx].label = e.target.value;
-                          setOptions(arr);
-                        }}
-                        placeholder="Option name"
-                        className="flex-1 min-w-0 p-2 rounded bg-gray-700 text-gray-200"
-                      />
-
-                      {/* Image picker */}
-                      <select
-                        value={opt.imageIndex}
-                        onChange={e => {
-                          const arr = [...options];
-                          arr[idx].imageIndex = Number(e.target.value);
-                          setOptions(arr);
-                        }}
-                        className="p-2 rounded bg-gray-700 text-gray-200 flex-shrink-0"
-                      >
-                        <option value="">Image #</option>
-                        {Array.from({ length: dropdownCount }).map((_, i) => (
-                          <option key={i} value={i}>{`#${i + 1}`}</option>
-                        ))}
-                      </select>
-
-                      {/* Per-option price */}
-                      <div className="relative flex-shrink-0">
-                        <span className="absolute left-2 top-2 text-gray-400">$</span>
-                        <input
-                          type="text"
-                          value={opt.price}
-                          onChange={e => {
-                            const arr = [...options];
-                            arr[idx].price = e.target.value;
-                            setOptions(arr);
-                          }}
-                          placeholder="0.00"
-                          className="w-20 pl-6 p-2 rounded bg-gray-700 text-gray-200"
-                        />
-                      </div>
-
-                      {/* Remove button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOptions(options.filter((_, i) => i !== idx));
-                        }}
-                        className="text-red-500 flex-shrink-0"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Add another option */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOptions([...options, { label: "", imageIndex: 0, price: "" }])
-                    }
-                    className="text-sm text-purple-400 hover:underline"
-                  >
-                    + Add option
-                  </button>
+                <div className="mt-3 space-y-3">
+                  <CustomOptionGroupsEditor
+                    groups={optionGroups}
+                    onChange={setOptionGroups}
+                    imageOptionsCount={dropdownCount}
+                    productColours={productColours}
+                    allowColourGroups={allowColourOptions}
+                    isLoadingColours={productColoursLoading}
+                    colourLoadError={colourLoadError}
+                  />
                 </div>
               )}
-
             </div>
 
             {/* Sale toggle with slider */}
@@ -1418,9 +2821,12 @@ function ModalEdit({
             </button>
             <button
               type="submit"
-              className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-2.5 rounded-lg hover:scale-[1.02] transition shadow-lg"
+              disabled={isSaving}
+              className={`bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-2.5 rounded-lg transition shadow-lg ${
+                isSaving ? "opacity-70 cursor-not-allowed" : "hover:scale-[1.02]"
+              }`}
             >
-              Save Changes
+              {isSaving ? "Saving…" : "Save Changes"}
             </button>
           </div>
         </form>
