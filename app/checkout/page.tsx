@@ -50,6 +50,11 @@ const ELIGIBLE_PRODUCT_IDS = new Set([
     'prod_SJnDwKP63LzZ96',
     'prod_SHsalw5YhR1lQ1',
     'prod_SHsZi6N6vXm8Sg',
+    'prod_TDyBwaS4It4r47',
+    'prod_TI4hux3NOhfH7i',
+    'prod_TC1jOBxgXRjiPu',
+    'prod_TAv3tAZtyVmLCJ',
+    'prod_T4u86Wm0HUvlI1',
   ]);
 
 // Keep your existing Stripe public key
