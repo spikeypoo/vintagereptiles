@@ -54,6 +54,8 @@ export async function POST(req: NextRequest, res: NextResponse) {
     'prod_TC1jOBxgXRjiPu',
     'prod_TAv3tAZtyVmLCJ',
     'prod_T4u86Wm0HUvlI1',
+    'prod_Tw9lDli6sUbcQQ',
+    'prod_Tw9uls9Hmqcfym',
   ]);
 
   // Validate stock
