@@ -6,7 +6,7 @@ import { prisma } from "@/app/lib/prisma";
 import { ObjectId } from "bson";
 
 export async function POST(req: NextRequest, res: NextResponse) {
-  const headersList = headers();
+  const headersList = await headers();
   const cartDetails = await req.json(); 
   
   const ELIGIBLE_PRODUCT_IDS = new Set([

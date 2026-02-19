@@ -123,14 +123,16 @@ const selectPrintFields = {
 export default async function ListingPage({
   params,
 }: {
-  params: { pages: string; listing: string };
+  params: Promise<{ pages: string; listing: string }>;
 }) {
-  const pageParam = params.pages.toLowerCase();
+  const { pages, listing } = await params;
+
+  const pageParam = pages.toLowerCase();
   if (!VALID_PAGES.includes(pageParam as PageKey)) {
     notFound();
   }
 
-  const [, idPart] = params.listing.split('-');
+  const [, idPart] = listing.split("-");
   if (!idPart) {
     notFound();
   }
@@ -140,7 +142,8 @@ export default async function ListingPage({
     notFound();
   }
 
-  const productColours = pageParam === 'prints' ? await getProductColours() : [];
+  const productColours =
+    pageParam === "prints" ? await getProductColours() : [];
 
   return (
     <ListingPageClient

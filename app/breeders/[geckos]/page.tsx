@@ -97,12 +97,15 @@ async function getProducts(geckos: GeckoKey): Promise<BreederCard[]> {
 }
 
 export default async function BreedersPage({ params }: { params: { geckos: string } }) {
-  const geckos = params.geckos.toLowerCase();
-  if (!VALID_GECKOS.includes(geckos as GeckoKey)) {
+
+  const { geckos } = await params;
+  
+  const geckoss = geckos.toLowerCase();
+  if (!VALID_GECKOS.includes(geckoss as GeckoKey)) {
     notFound();
   }
 
-  const cards = await getProducts(geckos as GeckoKey);
+  const cards = await getProducts(geckoss as GeckoKey);
 
-  return <BreedersPageClient geckos={geckos} initialCards={cards} />;
+  return <BreedersPageClient geckos={geckoss} initialCards={cards} />;
 }

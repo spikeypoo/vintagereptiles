@@ -115,12 +115,14 @@ export default async function GeckoListingPage({
 }: {
   params: { geckos: string; gecko: string };
 }) {
-  const group = params.geckos.toLowerCase();
+  const { geckos, gecko } = await params;
+
+  const group = geckos.toLowerCase();
   if (!VALID_GECKO_GROUPS.includes(group as GeckoGroup)) {
     notFound();
   }
 
-  const [, idPart] = params.gecko.split('-');
+  const [, idPart] = gecko.split('-');
   if (!idPart) {
     notFound();
   }

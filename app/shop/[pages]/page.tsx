@@ -83,11 +83,13 @@ function normalizeProducts(products: Array<Record<string, unknown>>): ShopPagePr
 }
 
 export default async function Page({ params }: { params: { pages: string } }) {
-  const cards = await getProducts(params.pages);
+  const { pages } = await params;
+
+  const cards = await getProducts(pages);
 
   if (!cards) {
     notFound();
   }
 
-  return <ShopPageClient pages={params.pages} initialCards={cards} />;
+  return <ShopPageClient pages={pages} initialCards={cards} />;
 }
