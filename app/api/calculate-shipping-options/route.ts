@@ -15,11 +15,7 @@ const CANADA_POST_RATE_URL = 'https://soa-gw.canadapost.ca/rs/ship/price'
 async function calculateShippingOptions(shippingDetails, session) {
   // 1) fetch line items so we can sum weights
   const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 })
-  let totalWeightKg = 0
-  for (const item of lineItems.data) {
-    // assume each product has metadata.weight_kg
-    totalWeightKg += 0.5 * item.quantity
-  }
+  let totalWeightKg = 1.36
 
   let postalCode = shippingDetails.address.postal_code
   postalCode = postalCode.replace(/\s+/g, '').toUpperCase()
