@@ -27,9 +27,9 @@ export default function Home() {
           <div className="font-bold text-2xl pb-[10px]">Payment Plans<br/></div>
 
           When purchasing a gecko a 35% non-refundable deposit will be used to hold your gecko.<br/>
-          Geckos $150 and under must be paid in full.<br/>
-          Geckos up to $599 must be paid off within 30 days.<br/>
-          Geckos $600 and over must be paid within 60 days.<br/>
+          Geckos $250 and under must be paid in full.<br/>
+          Geckos up to $649 must be paid off within 30 days.<br/>
+          Geckos $650 and over must be paid within 60 days.<br/>
           When the gecko has been paid in full it can be picked up/shipped out to the buyer. Payments can be made in the form of e-transfer, cash or Afterpay through my website.<br/><br/>
 
           In the event the buyer fails to provide full payment on a gecko by the end of the agreed upon date or fails to keep in regular communication regarding the plan, no refunds will be given and the gecko will be taken off hold. Reminders will be sent but if there is no response then you lose your gecko and funds.
@@ -40,19 +40,19 @@ export default function Home() {
 
           <div className="font-bold text-2xl pb-[10px]">Pickup/Shipping<br/></div>
 
-          Shipping is available at the buyer’s expense through Reptile Express. Quotes can be arranged upon request.<br/>
+          Shipping is available at the buyer’s expense through Reptile Express/Reptile Runner. Quotes can be arranged upon request.<br/>
           Shipping is only available throughout Canada at this time.<br/>
           Once the geckos are paid in full, arrangements for either pickup or shipping can be made as soon as possible.<br/>
           Free summer and winter holds are available until the weather is deemed safe for shipping.<br/>
           Pickup is available in Vaughan or occasionally at reptile expos.<br/>
-          Hatchlings will not be shipped until 5 grams, hatchlings cannot be picked up until 3 grams.<br/><br/>
+          Hatchlings will not be shipped/pick up until 5 grams.<br/><br/>
 
 
           <div className="font-bold text-2xl pb-[10px]">Tail Drops/Nips/Shedding Damage<br/></div>
 
           Tail drops during shipping or holds occasionally happen as shipping can be very stressful on some geckos.<br/>
           Nips are unlikely to happen as I keep all my geckos separate unless pairing.<br/>
-          Tip of the tail/toe loss can happen if the gecko does not shed properly.<br/>
+          Tip of the tail/toe loss can happen if the gecko does not shed properly. However, this is unlikely.<br/>
           These events are out of my control and they do not affect the quality of life or value of the gecko. A refund will not be issued in the event of this occurring.
           <br/><br/>
 
@@ -79,33 +79,6 @@ export default function Home() {
           Winter holds go into effect when the weather is too cold for the gecko to be safely shipped.<br/>
           If any health issues/tail drops arise while your gecko is on hold you will be notified ASAP.<br/>
 
-          
-
-
-          <br/><br/>
-          <div className="font-bold text-3xl text-[#cb18db]">Plants</div>
-          <div className="italic font-bold pt-[10px]">Updated April 16th 2025<br/><br/></div>
-          <div className="w-[100%] bg-white h-[1px]"></div><br/>
-
-          <div className="font-bold text-2xl pb-[10px]">Deposit/Payment Options</div>
-
-          A plant must be paid in full to be put on hold. Plants can be picked up/shipped after the full cost of the plant has been received. Payments can be made in the form of e-transfer or cash. All payments made will not be refunded unless there are issues with the plant before pickup.
-          <br></br>Inquiring about a plant without sending a deposit does not mean the plant has been claimed.
-
-          <br></br><br></br>
-
-          <div className="font-bold text-2xl pb-[10px]">Pickup/Shipping</div>
-
-          Pickups are welcome in Vaughan or occasionally at Reptile Expos.
-          <br></br>I also offer porch pickup to accommodate busy schedules.
-          <br></br>Shipping is available at the buyer&apos;s risk and expense.
-          <br></br>I offer flat rate $25 shipping across Canada.
-          <br></br>Free shipping on orders over $225 CAD!<br></br><br></br>
-
-          <div className="font-bold text-2xl pb-[10px]">Important Note</div>
-
-          I use beneficial bugs as a pest prevention (Swirskii Ulti-mite) which could still be on the plants when they leave my care.
-          <br></br>I do not offer refunds, returns, replacements or exchanges unless something happens to the plant while still in my care.
 
           <br/><br/><br/>
           <div className="font-bold text-3xl text-[#cb18db]">3D Prints</div>
@@ -126,7 +99,7 @@ export default function Home() {
 
           <div className="font-bold text-2xl pb-[10px]">Payment Plans</div>
 
-          Payments plans are available on orders over $150.<br/>A 35% deposit is required before your order can be made.<br/>We offer 30 day payment plans for our 3D prints.
+          Payments plans are available on orders over $200.<br/>A 35% deposit is required before your order can be made.<br/>We offer 30 day payment plans for our 3D prints. Orders cannot be picked up/shipped until they are paid off.
           
           <br></br><br></br>
 
