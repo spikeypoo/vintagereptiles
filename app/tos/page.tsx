@@ -89,6 +89,10 @@ export default function Home() {
 
           We offer a wide variety of colours mainly consisting of PLA filament. All products are made with Bambu Lab printers.
 
+          <br></br>
+
+          Bulk pricing only applies to 10+ of the same product. Products cannot be mixed and matched.
+
           <br></br><br></br>
 
           <div className="font-bold text-2xl pb-[10px]">Pickup/Shipping</div>
