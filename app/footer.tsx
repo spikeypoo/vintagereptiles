@@ -44,7 +44,7 @@ export default function Footer() {
               </div>
             </Link>
             <p className="text-gray-400 text-sm text-center md:text-left">
-              Specializing in high quality reptiles in addition to Isopods, Plants and 3D Prints.
+              Specializing in high quality reptiles in addition to Isopods and 3D Prints.
             </p>
           </div>
 
@@ -54,17 +54,12 @@ export default function Footer() {
             <ul className="text-gray-400 space-y-2 text-center md:text-left">
               <li>
                 <Link href="/shop/availability" className="hover:text-[#cb18db] transition duration-200">
-                  Geckos
+                  Availability
                 </Link>
               </li>
               <li>
                 <Link href="/shop/isopods" className="hover:text-[#cb18db] transition duration-200">
                   Isopods
-                </Link>
-              </li>
-              <li>
-                <Link href="/shop/plants" className="hover:text-[#cb18db] transition duration-200">
-                  Plants
                 </Link>
               </li>
               <li>

@@ -112,7 +112,7 @@ export default function MenuButton() {
                         : "transition ease-out duration-[500ms] absolute left-1/2 -translate-x-1/2 -translate-y-10 opacity-0"
                     }
                   >
-                    <div className="hover:text-[#cb18db] transition ease-out duration-[100ms]">Geckos</div>
+                    <div className="hover:text-[#cb18db] transition ease-out duration-[100ms]">Availability</div>
                   </div>
                 </div>
               </Link>

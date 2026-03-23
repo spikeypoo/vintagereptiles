@@ -33,7 +33,7 @@ export default function RootLayout({
             </div>
             <Link href="/"><button className="transition ease-in-out hover:text-[#cb18db] hover:scale-95 duration-200">Home</button></Link>
             <Link href="/tos"><button className="transition ease-in-out hover:text-[#cb18db] hover:scale-95 duration-200">Terms of Service</button></Link>
-            <Link href="/shop/availability"><button className="transition ease-in-out hover:text-[#cb18db] hover:scale-95 duration-200">Geckos</button></Link>
+            <Link href="/shop/availability"><button className="transition ease-in-out hover:text-[#cb18db] hover:scale-95 duration-200">Availability</button></Link>
             <Link href="/shop/isopods"><button className="transition ease-in-out hover:text-[#cb18db] hover:scale-95 duration-200">Isopods</button></Link>
             <Link href="/shop/prints"><button className="transition ease-in-out hover:text-[#cb18db] hover:scale-95 duration-200">3D Prints</button></Link>
             <div className="group relative">
