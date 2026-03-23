@@ -102,6 +102,12 @@ async function calculateShippingOptions(shippingDetails, session) {
       fixed_amount: { amount: 0, currency: 'CAD' },
       display_name: 'Local Pickup in Vaughan, Ontario',
     },
+  }, {
+    shipping_rate_data: {
+      type: 'fixed_amount',
+      fixed_amount: { amount: 0, currency: 'CAD' },
+      display_name: 'Toronto Reptile Expo Pickup April 26th 10am-1pm',
+    },
   }];
 }
 
