@@ -3,11 +3,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
-import { CheckoutProvider, useCheckout } from '@stripe/react-stripe-js';
+import { CheckoutElementsProvider, useCheckout } from '@stripe/react-stripe-js/checkout';
+import { stripePublishableKey } from '@/app/lib/stripe-client';
 
-const stripePromise = loadStripe('pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB5PlJl8XcHVbTf0B0T3h7Ey7y28URqdIITb48aM9jjZ7wjuCPKKb00utiqhUVv', {
-  betas: ['custom_checkout_server_updates_1'],
-});
+const stripePromise = loadStripe(stripePublishableKey);
 
 // Wrap your test secret in a function:
 const fetchClientSecret = async () => {
@@ -33,11 +32,14 @@ function Checker() {
 
 export default function TestRunServerUpdatePage() {
   return (
-    <CheckoutProvider stripe={stripePromise} options={{ fetchClientSecret }}>
+    <CheckoutElementsProvider
+      stripe={stripePromise}
+      options={{ clientSecret: Promise.resolve(fetchClientSecret()) }}
+    >
       <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
         <h1>Stripe runServerUpdate Checker</h1>
         <Checker />
       </div>
-    </CheckoutProvider>
+    </CheckoutElementsProvider>
   );
 }

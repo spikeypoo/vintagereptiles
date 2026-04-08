@@ -2,6 +2,7 @@ import connect from "@/app/utils/startMongo";
 import { S3Client, ListObjectsCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { NextRequest } from "next/server";
 import { ObjectId } from "bson";
+import { mongoDbName } from "@/app/lib/db-server";
 import { prisma } from "@/app/lib/prisma";
 import stripe from "@/app/lib/stripe";
 
@@ -56,14 +57,14 @@ export async function POST(request: Request) {
   // 4) Connect + insert
   const client = await connect;
   const result = await client
-    .db("Products")
+    .db(mongoDbName)
     .collection("Femalegargoylegeckos")
     .insertOne(doc);
 
   // 5) Now handle Stripe logic for newly added doc
   //    We'll find the inserted doc, check price, create Stripe product if needed
   const insertedDoc = await client
-    .db("Products")
+    .db(mongoDbName)
     .collection("Femalegargoylegeckos")
     .findOne({ _id: result.insertedId });
 
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
     });
 
     await client
-      .db("Products")
+      .db(mongoDbName)
       .collection("Femalegargoylegeckos")
       .findOneAndUpdate(
         { _id: result.insertedId },
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     });
 
     await client
-      .db("Products")
+      .db(mongoDbName)
       .collection("Femalegargoylegeckos")
       .findOneAndUpdate(
         { _id: result.insertedId },
@@ -152,14 +153,14 @@ export async function PUT(request: Request) {
   // 4) Update DB
   const client = await connect;
   await client
-    .db("Products")
+    .db(mongoDbName)
     .collection("Femalegargoylegeckos")
     .findOneAndUpdate({ _id: new ObjectId(id) }, { $set: updateDoc });
 
   // 5) Possibly handle Stripe logic
   //    We'll find the updated doc so we can get the first image for Stripe
   const isExist = await client
-    .db("Products")
+    .db(mongoDbName)
     .collection("Femalegargoylegeckos")
     .findOne({ _id: new ObjectId(id) });
 
@@ -181,7 +182,7 @@ export async function PUT(request: Request) {
     });
 
     await client
-      .db("Products")
+      .db(mongoDbName)
       .collection("Femalegargoylegeckos")
       .findOneAndUpdate(
         { _id: new ObjectId(id) },
@@ -195,7 +196,7 @@ export async function PUT(request: Request) {
     });
 
     await client
-      .db("Products")
+      .db(mongoDbName)
       .collection("Femalegargoylegeckos")
       .findOneAndUpdate(
         { _id: new ObjectId(id) },
@@ -229,7 +230,7 @@ export async function PUT(request: Request) {
     }
 
     await client
-      .db("Products")
+      .db(mongoDbName)
       .collection("Femalegargoylegeckos")
       .findOneAndUpdate(
         { _id: new ObjectId(id) },
@@ -246,7 +247,7 @@ export async function DELETE(request: Request) {
   const id = form.get("id") as string;
 
   await client
-    .db("Products")
+    .db(mongoDbName)
     .collection("Femalegargoylegeckos")
     .findOneAndDelete({
       _id: new ObjectId(id),

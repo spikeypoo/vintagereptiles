@@ -1,19 +1,22 @@
-// middleware.ts
-import { auth } from "@/auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export default auth((req) => {
-  // req.auth contains session info
-  if (!req.auth?.user) {
-    // Not signed in → redirect to /signin
-    return NextResponse.redirect(new URL("/signin", req.url));
+function hasAuthSessionCookie(request: NextRequest) {
+  return Boolean(
+    request.cookies.get("authjs.session-token")?.value ||
+      request.cookies.get("__Secure-authjs.session-token")?.value ||
+      request.cookies.get("next-auth.session-token")?.value ||
+      request.cookies.get("__Secure-next-auth.session-token")?.value
+  );
+}
+
+export function middleware(request: NextRequest) {
+  if (!hasAuthSessionCookie(request)) {
+    return NextResponse.redirect(new URL("/signin", request.url));
   }
 
-  // signed in → allow access
   return NextResponse.next();
-});
+}
 
-// only run middleware on /panel routes
 export const config = {
   matcher: ["/panel/:path*"],
 };

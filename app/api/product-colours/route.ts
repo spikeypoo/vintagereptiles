@@ -1,5 +1,6 @@
 import connect from "@/app/utils/startMongo";
 import { ObjectId } from "mongodb";
+import { mongoDbName } from "@/app/lib/db-server";
 
 type ProductColourDocument = {
   _id: ObjectId;
@@ -27,7 +28,7 @@ export async function GET() {
   try {
     const client = await connect;
     const cursor = client
-      .db("Products")
+      .db(mongoDbName)
       .collection<ProductColourDocument>(COLLECTION_NAME)
       .find({})
       .sort({ sortOrder: 1, createdAt: 1 });
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     };
 
     const result = await client
-      .db("Products")
+      .db(mongoDbName)
       .collection(COLLECTION_NAME)
       .insertOne(insertDoc);
 
@@ -112,7 +113,7 @@ export async function PUT(request: Request) {
     }
 
     const result = await client
-      .db("Products")
+      .db(mongoDbName)
       .collection<ProductColourDocument>(COLLECTION_NAME)
       .findOneAndUpdate(
         { _id: new ObjectId(id) },
@@ -148,7 +149,7 @@ export async function DELETE(request: Request) {
     }
 
     const result = await client
-      .db("Products")
+      .db(mongoDbName)
       .collection(COLLECTION_NAME)
       .deleteOne({ _id: new ObjectId(id) });
 

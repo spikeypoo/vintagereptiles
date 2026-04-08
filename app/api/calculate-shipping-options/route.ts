@@ -13,8 +13,34 @@ const CANADA_POST_RATE_URL = 'https://soa-gw.canadapost.ca/rs/ship/price'
  * @returns {Promise<Stripe.Checkout.SessionCreateParams.ShippingOption[]|null>}
  */
 async function calculateShippingOptions(shippingDetails, session) {
-  // 1) fetch line items so we can sum weights
-  const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 })
+  const hasReptileInCart = session.metadata?.has_reptile_in_cart === 'true'
+
+  if (hasReptileInCart) {
+    return [
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount',
+          fixed_amount: { amount: 0, currency: 'CAD' },
+          display_name: 'Reptile shipping. You will be contacted for a quote after checkout.',
+        },
+      },
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount',
+          fixed_amount: { amount: 0, currency: 'CAD' },
+          display_name: 'Local Pickup in Vaughan, Ontario',
+        },
+      },
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount',
+          fixed_amount: { amount: 0, currency: 'CAD' },
+          display_name: 'Toronto Reptile Expo Pickup April 26th 10am-1pm',
+        },
+      },
+    ]
+  }
+
   let totalWeightKg = 1.36
 
   let postalCode = shippingDetails.address.postal_code
@@ -87,13 +113,6 @@ async function calculateShippingOptions(shippingDetails, session) {
       type: 'fixed_amount',
       fixed_amount: { amount: Math.round(due * 100), currency: 'CAD' },
       display_name: regularQuote['service-name'] || 'Canada Post - Regular Parcel',
-    },
-  }, 
-  {
-    shipping_rate_data: {
-      type: 'fixed_amount',
-      fixed_amount: { amount: 0, currency: 'CAD' },
-      display_name: 'Only select if your purchase includes a reptile. You will be contacted for a shipping quote.',
     },
   },
   {

@@ -230,7 +230,7 @@ export default function Home() {
 
   // A simple array of categories (label + route)
   const categories = [
-    { label: "Geckos", value: "/api/forsale/availability" },
+    { label: "Availability", value: "/api/forsale/availability" },
     { label: "3D Prints", value: "/api/forsale/prints" },
     { label: "Print Colours", value: PRINT_COLOURS_ROUTE },
     { label: "Isopods", value: "/api/forsale/isopods" },

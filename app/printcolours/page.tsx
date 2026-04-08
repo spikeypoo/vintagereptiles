@@ -2,6 +2,7 @@
 import Image from "next/image";
 import "../globals.css";
 import connect from "@/app/utils/startMongo";
+import { mongoDbName } from "@/app/lib/db-server";
 
 type ProductColour = {
   id: string;
@@ -13,7 +14,7 @@ async function getProductColours(): Promise<ProductColour[]> {
   try {
     const client = await connect;
     const colours = await client
-      .db("Products")
+      .db(mongoDbName)
       .collection("ProductColours")
       .find({})
       .sort({ sortOrder: 1, createdAt: 1 })

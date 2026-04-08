@@ -3,12 +3,21 @@
 import React, { useState, useEffect } from "react";
 import {
   PaymentElement,
-  AddressElement,
+  BillingAddressElement,
+  ShippingAddressElement,
   useCheckout,
-} from '@stripe/react-stripe-js';
+} from '@stripe/react-stripe-js/checkout';
 import { ArrowRight, Check, Clock, Mail, Package, Truck, CreditCard, Phone } from "lucide-react";
 
+const useCheckoutValue = () => {
+  const checkoutState = useCheckout();
+  return checkoutState.type === "success" ? checkoutState.checkout : null;
+};
+
 const validateEmail = async (email, checkout) => {
+  if (!checkout) {
+    return { isValid: false, message: "Checkout is still loading." };
+  }
   const updateResult = await checkout.updateEmail(email);
   const isValid = updateResult.type !== "error";
   return { isValid, message: !isValid ? updateResult.error.message : null };
@@ -83,6 +92,11 @@ const PhoneStep = ({ phone, setPhone, error, setError, onComplete, checkout }) =
   const [localPhone, setLocalPhone] = useState(phone || "");
 
   const handleContinue = async () => {
+    if (!checkout) {
+      setError("Checkout is still loading.");
+      return;
+    }
+
     if (!localPhone.trim()) {
       setError("Phone number is required");
       return;
@@ -137,7 +151,7 @@ const PhoneStep = ({ phone, setPhone, error, setError, onComplete, checkout }) =
 };
 
 const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
-  const checkout = useCheckout();
+  const checkout = useCheckoutValue();
   const [localEmail, setLocalEmail] = useState(email || "");
 
   useEffect(() => {
@@ -214,19 +228,53 @@ const EmailStep = ({ email, setEmail, error, setError, onComplete }) => {
 export const BillingAddressStep = ({ onComplete, shippingAddressData }) => {
   const [sameAsShipping, setSameAsShipping] = useState(false);
   const [billingComplete, setBillingComplete] = useState(false);
-  const checkout = useCheckout();
+  const [billingError, setBillingError] = useState(null);
+  const [billingValue, setBillingValue] = useState(null);
+  const checkout = useCheckoutValue();
 
   // copy shipping → billing when toggled
   useEffect(() => {
-    if (sameAsShipping && shippingAddressData) {
+    if (sameAsShipping && shippingAddressData && checkout) {
       checkout.updateAddress({
         type: 'billing',
         address: { ...shippingAddressData.address },
         name: shippingAddressData.name,
       }).catch(console.error);
       setBillingComplete(true);
+      setBillingValue(shippingAddressData);
+      setBillingError(null);
     }
   }, [sameAsShipping, shippingAddressData, checkout]);
+
+  useEffect(() => {
+    if (!sameAsShipping) {
+      setBillingComplete(false);
+    }
+  }, [sameAsShipping]);
+
+  const handleContinue = async () => {
+    if (!sameAsShipping) {
+      const billingAddress = billingValue;
+      const postalCode =
+        billingAddress?.address?.postal_code ?? billingAddress?.address?.postalCode;
+      const hasBillingAddress =
+        billingComplete &&
+        billingAddress?.address?.line1 &&
+        billingAddress?.address?.country === 'CA' &&
+        postalCode;
+
+      if (!hasBillingAddress) {
+        setBillingComplete(false);
+        setBillingError("Please complete a Canadian billing address.");
+        return;
+      }
+
+      setBillingComplete(true);
+    }
+
+    setBillingError(null);
+    onComplete();
+  };
 
   return (
     <div className="bg-[#1d1b1b] rounded-lg p-4 sm:p-6 mb-4 shadow-lg border border-gray-800">
@@ -252,21 +300,28 @@ export const BillingAddressStep = ({ onComplete, shippingAddressData }) => {
 
       {!sameAsShipping && (
         <div className="bg-[#2a2728] rounded-md p-3 sm:p-4 mb-5">
-          <AddressElement
+          <BillingAddressElement
             options={{ mode: 'billing' }}
-            onChange={e => setBillingComplete(e.complete)}
+            onChange={e => {
+              setBillingComplete(e.complete);
+              setBillingValue(e.value || null);
+              if (e.complete) {
+                setBillingError(null);
+              }
+            }}
           />
         </div>
       )}
 
+      {billingError && (
+        <p className="text-red-400 mb-4 text-sm">{billingError}</p>
+      )}
+
       <button
-        onClick={onComplete}
-        disabled={!(sameAsShipping || billingComplete)}
+        onClick={handleContinue}
         className={`px-4 py-2 sm:px-6 sm:py-3 rounded-md text-white font-bold flex items-center transition-all text-sm sm:text-base
           bg-gradient-to-r from-[#cb18db] to-[#a012b8]
-          ${!(sameAsShipping || billingComplete)
-            ? 'opacity-50 pointer-events-none'
-            : 'hover:from-[#d334e7] hover:to-[#b321c9]'}`}
+          hover:from-[#d334e7] hover:to-[#b321c9]`}
       >
         Continue <ArrowRight className="ml-1 sm:ml-2 w-3 h-3 sm:w-4 sm:h-4" />
       </button>
@@ -275,7 +330,7 @@ export const BillingAddressStep = ({ onComplete, shippingAddressData }) => {
 };
 
 export function ShippingAddressStep({ onComplete, active }) {
-  const { runServerUpdate, getShippingAddressElement, id: sessionId } = useCheckout();
+  const checkout = useCheckoutValue();
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -291,7 +346,13 @@ export function ShippingAddressStep({ onComplete, active }) {
     setError(null);
     setIsLoading(true);
 
-    const addressElement = getShippingAddressElement();
+    if (!checkout) {
+      setError("Checkout is still loading.");
+      setIsLoading(false);
+      return;
+    }
+
+    const addressElement = checkout.getShippingAddressElement();
     if (!addressElement) {
       setError("Could not access the address form");
       setIsLoading(false);
@@ -305,13 +366,19 @@ export function ShippingAddressStep({ onComplete, active }) {
       return;
     }
 
+    if (value?.address?.country !== "CA") {
+      setError("Shipping is only available to Canadian addresses.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      await runServerUpdate(async () => {
+      await checkout.runServerUpdate(async () => {
         const res = await fetch("/api/calculate-shipping-options", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            checkout_session_id: sessionId,
+            checkout_session_id: checkout.id,
             shipping_details: value,
           }),
         });
@@ -344,7 +411,7 @@ export function ShippingAddressStep({ onComplete, active }) {
 
   return (
     <div className="bg-[#1d1b1b] p-4 sm:p-6 rounded-lg">
-      <AddressElement options={{ mode: "shipping" }} />
+      <ShippingAddressElement options={{ mode: "shipping" }} />
       {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
       <div className="flex justify-end mt-4">
         <button
@@ -362,7 +429,7 @@ export function ShippingAddressStep({ onComplete, active }) {
 }
 
 export const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
-  const checkout = useCheckout();
+  const checkout = useCheckoutValue();
   const [selectedOption, setSelectedOption] = useState(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -374,6 +441,7 @@ export const ShippingMethodsStep = ({ onComplete, updateShipping }) => {
   }, [checkout?.shippingOptions, initialized]);
 
   const handleSelectOption = async (optId) => {
+    if (!checkout) return;
     if (optId === selectedOption) return;
 
     setSelectedOption(optId);
@@ -554,8 +622,7 @@ const PaymentStep = ({ isLoading, handleSubmit, message, total }) => {
 // Modified CheckoutForm component with proper email state management
 
 const CheckoutForm = ({ updateShipping }) => {
-  const checkout = useCheckout();
-  const { session } = checkout;
+  const checkout = useCheckoutValue();
 
   // 1) Track which step we're on, plus whether each's done
   const [currentStep, setCurrentStep] = useState(1);
@@ -568,7 +635,7 @@ const CheckoutForm = ({ updateShipping }) => {
   });
 
   // Add local email state
-  const [emailValue, setEmailValue] = useState(checkout.email || "");
+  const [emailValue, setEmailValue] = useState(checkout?.email || "");
   const [emailError, setEmailError] = useState(null);
 
   const [phoneValue, setPhoneValue] = useState("");
@@ -617,6 +684,7 @@ const CheckoutForm = ({ updateShipping }) => {
 
   // 4) When the shipping address step is done, capture details & call our API
   const onShippingAddressComplete = async () => {
+    if (!checkout) return;
     // the AddressElement writes into checkout.shippingDetails
     const details = checkout.shippingDetails;
     setShippingDetails(details);
@@ -629,15 +697,15 @@ const CheckoutForm = ({ updateShipping }) => {
 
   // When shipping methods step is shown, automatically reset the loading state
   useEffect(() => {
-    if (currentStep === 4 && checkout.shippingOptions) {
+    if (currentStep === 4 && checkout?.shippingOptions) {
       setLoadingShippingOptions(false);
     }
-  }, [currentStep, checkout.shippingOptions]);
+  }, [currentStep, checkout?.shippingOptions]);
 
   // Function to update email in both local state and checkout context
   const handleEmailUpdate = (value) => {
     setEmailValue(value);
-    checkout.updateEmail(value);
+    checkout?.updateEmail(value);
   };
 
   return (
@@ -743,9 +811,9 @@ const CheckoutForm = ({ updateShipping }) => {
             >
               <PaymentStep
                 isLoading={false}
-                handleSubmit={() => checkout.confirm()}
+                handleSubmit={() => checkout?.confirm()}
                 message={null}
-                total={checkout.total?.total?.amount}
+                total={checkout?.total?.total?.amount}
               />
             </CheckoutStep>
           </div>

@@ -2,6 +2,7 @@ import { prisma } from '@/app/lib/prisma';
 import { notFound } from 'next/navigation';
 import ListingPageClient, { ListingPageData } from './ListingPageClient';
 import connect from '@/app/utils/startMongo';
+import { mongoDbName } from '@/app/lib/db-server';
 
 export const revalidate = 300;
 
@@ -44,7 +45,7 @@ async function getProductColours(): Promise<ProductColour[]> {
   try {
     const client = await connect;
     const colours = await client
-      .db('Products')
+      .db(mongoDbName)
       .collection('ProductColours')
       .find({})
       .sort({ sortOrder: 1, createdAt: 1 })

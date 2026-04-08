@@ -2,8 +2,10 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
+import authConfig from "@/auth.config";
 
 export const authOptions = {
+  ...authConfig,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -25,6 +27,3 @@ export const authOptions = {
     }),
   ],
 };
-
-// server-side handlers for API routes
-export const { handlers, auth } = NextAuth(authOptions);

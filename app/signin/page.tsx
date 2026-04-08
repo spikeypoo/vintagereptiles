@@ -33,36 +33,17 @@ function SignInForm() {
 
   return (
     <div className="signin-card">
-      <div className="signin-logo">
-        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 2L3 7v11h5v-5h4v5h5V7L10 2z"/>
-        </svg>
-      </div>
-
-      <h1 className="signin-heading">Welcome back</h1>
-      <p className="signin-subheading">Sign in to your account to continue</p>
-
-      <button onClick={() => signIn("google", { callbackUrl })} className="google-btn">
-        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-          <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.96L3.964 7.292C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-        </svg>
-        Continue with Google
-      </button>
-
-      <div className="divider">
-        <div className="divider-line" />
-        <span className="divider-text">or</span>
-        <div className="divider-line" />
-      </div>
+      <div className="signin-eyebrow">Vintage Reptiles</div>
+      <h1 className="signin-heading">Sign in</h1>
+      <p className="signin-subheading">Access the admin panel.</p>
 
       <form onSubmit={handleCredentialsSignIn}>
         {error && <div className="error-msg">{error}</div>}
         <div className="form-group">
-          <input name="username" placeholder="Username" className="form-input" autoComplete="username" />
-          <input name="password" type="password" placeholder="Password" className="form-input" autoComplete="current-password" />
+          <label className="field-label" htmlFor="username">Username</label>
+          <input id="username" name="username" placeholder="Enter username" className="form-input" autoComplete="username" />
+          <label className="field-label" htmlFor="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="Enter password" className="form-input" autoComplete="current-password" />
         </div>
         <button type="submit" className="submit-btn">Sign in</button>
       </form>
@@ -75,179 +56,140 @@ export default function SignInPage() {
     <>
       <style>{`
         .signin-wrapper {
-          font-family: inherit;
-          font-size: inherit;
-          min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #0e0e0e;
-          padding: 2rem;
+          padding: 2rem 1rem;
+          background:
+            linear-gradient(180deg, #0a090b 0%, #100d12 100%);
         }
 
         .signin-card {
-          background: #161616;
-          border-radius: 20px;
-          padding: 3rem 3rem 2.5rem;
           width: 100%;
-          max-width: 420px;
+          max-width: 24rem;
+          border-radius: 18px;
+          padding: 2rem;
+          background: rgba(16, 14, 18, 0.96);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           box-shadow:
-            0 1px 2px rgba(0,0,0,0.4),
-            0 4px 12px rgba(0,0,0,0.4),
-            0 20px 40px rgba(0,0,0,0.5);
-          border: 1px solid #262626;
+            0 24px 60px rgba(0, 0, 0, 0.4),
+            0 1px 0 rgba(255, 255, 255, 0.03) inset;
         }
 
-        .signin-logo {
-          width: 40px;
-          height: 40px;
-          background: #222;
-          border-radius: 10px;
-          margin-bottom: 1.75rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid #333;
-        }
-
-        .signin-logo svg {
-          width: 20px;
-          height: 20px;
-          fill: #c8a97e;
+        .signin-eyebrow {
+          margin: 0 0 0.8rem;
+          color: #a29aa7;
+          font-size: 0.75rem;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
         }
 
         .signin-heading {
           font-size: 2rem;
-          color: #f0ece6;
+          color: #ffffff;
           margin: 0 0 0.35rem;
-          line-height: 1.15;
-          letter-spacing: -0.02em;
+          line-height: 1.05;
+          letter-spacing: -0.025em;
         }
 
         .signin-subheading {
-          font-size: 0.875rem;
-          color: #555;
-          margin: 0 0 2rem;
-          font-weight: 400;
+          font-size: 0.95rem;
+          color: #938b98;
+          margin: 0 0 1.5rem;
+          line-height: 1.45;
         }
 
-        .google-btn {
-          width: 100%;
+        form {
           display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.625rem;
-          padding: 0.75rem 1.25rem;
-          background: #1e1e1e;
-          border: 1.5px solid #2e2e2e;
-          border-radius: 10px;
-          font-size: inherit;
-          font-weight: 500;
-          color: #ccc;
-          cursor: pointer;
-          transition: all 0.18s ease;
-          margin-bottom: 1.5rem;
-        }
-
-        .google-btn:hover {
-          background: #222;
-          border-color: #c8a97e;
-          color: #f0ece6;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-        }
-
-        .google-btn:active {
-          transform: translateY(0);
-        }
-
-        .google-btn svg {
-          flex-shrink: 0;
-        }
-
-        .divider {
-          display: flex;
-          align-items: center;
+          flex-direction: column;
           gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .divider-line {
-          flex: 1;
-          height: 1px;
-          background: #252525;
-        }
-
-        .divider-text {
-          font-size: 0.75rem;
-          color: #444;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          font-weight: 500;
         }
 
         .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.875rem;
-          margin-bottom: 1.25rem;
+          display: grid;
+          grid-template-columns: 1fr;
+          row-gap: 0.55rem;
+        }
+
+        .field-label {
+          color: #c9c2cd;
+          font-size: 0.84rem;
+          font-weight: 500;
         }
 
         .form-input {
+          display: flex;
           width: 100%;
-          padding: 0.75rem 1rem;
-          border: 1.5px solid #2a2a2a;
+          padding: 0.85rem 0.95rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 10px;
-          font-size: inherit;
-          color: #f0ece6;
-          background: #1a1a1a;
-          transition: all 0.18s ease;
+          font-size: 0.95rem;
+          color: #f4f2f5;
+          background: #161319;
+          transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
           outline: none;
           box-sizing: border-box;
         }
 
         .form-input::placeholder {
-          color: #444;
+          color: #6f6874;
         }
 
         .form-input:focus {
-          border-color: #c8a97e;
-          background: #1e1e1e;
-          box-shadow: 0 0 0 3px rgba(200, 169, 126, 0.1);
+          border-color: rgba(203, 24, 219, 0.5);
+          box-shadow: 0 0 0 3px rgba(203, 24, 219, 0.1);
+          background: #18141b;
         }
 
         .error-msg {
-          font-size: 0.8rem;
-          color: #f08080;
-          background: #2a1515;
-          border: 1px solid #4a2020;
-          border-radius: 8px;
-          padding: 0.6rem 0.875rem;
-          margin-bottom: 0.25rem;
+          font-size: 0.84rem;
+          color: #ffd8df;
+          background: rgba(127, 29, 29, 0.22);
+          border: 1px solid rgba(248, 113, 113, 0.18);
+          border-radius: 10px;
+          padding: 0.75rem 0.85rem;
+          margin: 0;
         }
 
         .submit-btn {
           width: 100%;
-          padding: 0.8rem 1.25rem;
-          background: #c8a97e;
-          color: #0e0e0e;
+          margin-top: 0.2rem;
+          padding: 0.9rem 1rem;
+          background: #cb18db;
+          color: #ffffff;
           border: none;
           border-radius: 10px;
-          font-size: inherit;
-          font-weight: 700;
-          letter-spacing: 0.01em;
+          font-size: 0.95rem;
+          font-weight: 600;
           cursor: pointer;
-          transition: all 0.18s ease;
+          transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
         }
 
         .submit-btn:hover {
-          background: #e8c89a;
+          background: #d72be6;
           transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(200, 169, 126, 0.25);
+          box-shadow: 0 10px 24px rgba(203, 24, 219, 0.18);
         }
 
         .submit-btn:active {
           transform: translateY(0);
+        }
+
+        @media (max-width: 640px) {
+          .signin-wrapper {
+            padding: 1rem;
+          }
+
+          .signin-card {
+            border-radius: 16px;
+            padding: 1.4rem;
+          }
+
+          .signin-heading {
+            font-size: 1.75rem;
+          }
         }
 
       `}</style>

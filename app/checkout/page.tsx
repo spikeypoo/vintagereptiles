@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import { CheckoutProvider } from '@stripe/react-stripe-js';
+import { CheckoutElementsProvider } from '@stripe/react-stripe-js/checkout';
 import CheckoutForm from '../checkoutform';
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ShoppingCart, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { stripePublishableKey } from "@/app/lib/stripe-client";
 
 const ELIGIBLE_PRODUCT_IDS = new Set([
     "prod_SCLs3mv4vbqs76",
@@ -60,9 +61,10 @@ const ELIGIBLE_PRODUCT_IDS = new Set([
   ]);
 
 // Keep your existing Stripe public key
-const stripePromise = loadStripe('pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB5PlJl8XcHVbTf0B0T3h7Ey7y28URqdIITb48aM9jjZ7wjuCPKKb00utiqhUVv', {
-  betas: ['custom_checkout_server_updates_1'],
+const stripePromise = loadStripe(stripePublishableKey, {
+  betas: ["custom_checkout_payment_form_1"],
 });
+
 
 // Function to check if item is from 3D print section
 const isFrom3DPrintSection = (item) => {
@@ -84,11 +86,6 @@ const calculateBulkDiscount = (quantity, item) => {
 // Create a client component that uses useSearchParams
 function CheckoutContent() {
   const router = useRouter();
-  // Use dynamic import for useSearchParams to ensure it's only used client-side
-  const { useSearchParams } = require("next/navigation");
-  const searchParams = useSearchParams();
-  const clientSecret = searchParams.get("clientSecret") || "";
-  
   const [orderData, setOrderData] = useState({
     items: [],
     subtotal: 0,
@@ -100,6 +97,7 @@ function CheckoutContent() {
   });
 
   const [isCheckoutReady, setIsCheckoutReady] = useState(false);
+  const [checkoutClientSecret, setCheckoutClientSecret] = useState(null);
   const [showOrderSummary, setShowOrderSummary] = useState(false);
 
   const updateShipping = (shippingCost) => {
@@ -243,6 +241,97 @@ function CheckoutContent() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const createCheckoutSession = async () => {
+      try {
+        const rawCart = localStorage.getItem("Cart") || "{}";
+        const holder = JSON.parse(rawCart);
+        const details = {};
+
+        for (const [key, value] of Object.entries(holder)) {
+          const usePriceID = value.chosenOptionPriceID ?? value.priceID;
+
+          details[key] = {
+            product: {
+              name: value.name,
+              price: usePriceID,
+              quantity: value.quantity,
+            },
+            stocktrack: {
+              id: value.id,
+              currpage: value.currpage,
+            },
+            chosenOptions: value.chosenOptions || {},
+          };
+
+          details[key].chosenOption = value.chosenOption || "";
+          if (value.chosenColors) {
+            details[key].chosenColors = value.chosenColors;
+          }
+
+          let colorDisplay = "";
+          if (value.chosenColors) {
+            if (Array.isArray(value.chosenColors)) {
+              const combos = value.chosenColors.map((combo, i) => {
+                const comboList = Object.entries(combo)
+                  .map(([colName, colQty]) => `${colName} (${colQty})`)
+                  .join(", ");
+                return `Set ${i + 1}: ${comboList}`;
+              });
+              colorDisplay = combos.join("; ");
+            } else if (typeof value.chosenColors === "object") {
+              const arr = Object.entries(value.chosenColors).map(
+                ([colName, colQty]) => `${colName} (${colQty})`
+              );
+              colorDisplay = arr.join(", ");
+            } else if (typeof value.chosenColors === "string") {
+              colorDisplay = value.chosenColors;
+            }
+          }
+          details[key].product.colors = colorDisplay;
+        }
+
+        const res = await fetch("/api/checkout_sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ details }),
+        });
+
+        const payload = await res.json();
+        if (!res.ok) {
+          const message = Array.isArray(payload.issues) && payload.issues.length > 0
+            ? payload.issues.join("\n")
+            : payload.error || "Unable to validate your cart.";
+          alert(message);
+          router.push("/cart");
+          return;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setCheckoutClientSecret(payload.clientSecret);
+        setIsCheckoutReady(true);
+      } catch (error) {
+        console.error("Error creating checkout session:", error);
+        if (!isMounted) {
+          return;
+        }
+        alert("Unable to start checkout. Please try again.");
+        router.push("/cart");
+      }
+    };
+
+    createCheckoutSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
   // Format currency
   const formatPrice = (amount, currency = 'CAD') => {
     return new Intl.NumberFormat('en-CA', {
@@ -264,30 +353,6 @@ function CheckoutContent() {
       borderRadius: '8px',
       spacingUnit: '4px',
     },
-    rules: {
-      '.Input': {
-        boxShadow: '0 0 0 1px rgba(203, 24, 219, 0.1)',
-        transition: 'box-shadow 0.15s ease',
-      },
-      '.Input:focus': {
-        boxShadow: '0 0 0 2px rgba(203, 24, 219, 0.4)',
-      },
-      '.Label': {
-        fontSize: '14px',
-        fontWeight: '500',
-      },
-      '.Tab': {
-        padding: '10px 12px',
-        border: '1px solid #332f30',
-      },
-      '.Tab:hover': {
-        border: '1px solid rgba(203, 24, 219, 0.5)',
-      },
-      '.Tab--selected': {
-        borderColor: '#cb18db',
-        boxShadow: '0 0 0 1px rgba(203, 24, 219, 0.5)',
-      }
-    }
   };
 
   return (
@@ -354,63 +419,20 @@ function CheckoutContent() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
           {/* Checkout Form Section - Reversed order on mobile */}
           <div className="lg:col-span-8 lg:order-1 order-2">
-            <CheckoutProvider
-              stripe={stripePromise}
-              options={{
-                fetchClientSecret: async () => {
-                  const rawCart = localStorage.getItem("Cart") || "{}";
-                  const holder = JSON.parse(rawCart);
-                  const details = {};
-            
-                  for (const [key, value] of Object.entries(holder)) {
-                    const usePriceID = value.chosenOptionPriceID ?? value.priceID;
-            
-                    details[key] = {
-                      product: {
-                        name: value.name,
-                        price: usePriceID,
-                        quantity: value.quantity,
-                      },
-                      stocktrack: {
-                        id: value.id,
-                        currpage: value.currpage,
-                      },
-                    };
-            
-                    details[key].chosenOption = value.chosenOption || "";
-            
-                    let colorDisplay = "";
-                    if (value.chosenColors) {
-                      if (typeof value.chosenColors === "object" && !Array.isArray(value.chosenColors)) {
-                        const arr = Object.entries(value.chosenColors).map(
-                          ([colName, colQty]) => `${colName} (${colQty})`
-                        );
-                        colorDisplay = arr.join(", ");
-                      } else if (typeof value.chosenColors === "string") {
-                        colorDisplay = value.chosenColors;
-                      }
-                    }
-                    details[key].product.colors = colorDisplay;
-                  }
-            
-                  const res = await fetch("/api/checkout_sessions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ details }),
-                  });
-            
-                  const { clientSecret } = await res.json();
-                  setIsCheckoutReady(true);
-                  return clientSecret;
-                },
-                elementsOptions: { appearance },
-              }}
-            >
-              <CheckoutForm 
-                orderTotal={formatPrice(orderData.total)} 
-                updateShipping={updateShipping} 
-              />
-            </CheckoutProvider>
+            {checkoutClientSecret && (
+              <CheckoutElementsProvider
+                stripe={stripePromise}
+                options={{
+                  clientSecret: checkoutClientSecret,
+                  elementsOptions: { appearance },
+                }}
+              >
+                <CheckoutForm 
+                  orderTotal={formatPrice(orderData.total)} 
+                  updateShipping={updateShipping} 
+                />
+              </CheckoutElementsProvider>
+            )}
           </div>
           
           {/* Order Summary Section */}

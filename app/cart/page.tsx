@@ -4,80 +4,225 @@ import Image from "next/image";
 import Link from "next/link";
 import "@/app/globals.css";
 import { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { useRouter } from "next/navigation";
+
+type CartColorMap = Record<string, number>;
+
+type CartCardProps = {
+  cartKey: string;
+  index: number;
+  name: string;
+  price: string | number;
+  quantity: number;
+  image?: string;
+  colors?: CartColorMap[] | CartColorMap | null;
+  chosenOption?: string | null;
+};
+
+type CartValidationUpdate = {
+  cartKey: string;
+  action: "keep" | "update" | "remove";
+  quantity?: number;
+  price?: string;
+  priceID?: string;
+  chosenOptionPriceID?: string | null;
+  chosenColors?: unknown;
+};
 
 export default function CartDetails() {
   const [cards, setCards] = useState<any[]>([]);
   const [totalPrice, setTotal] = useState(0);
+  const [isValidatingCart, setIsValidatingCart] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const rawCart = localStorage.getItem("Cart");
-    if (!rawCart) return;
-
-    const holder = JSON.parse(rawCart);
-
+  const syncCartState = (holder: Record<string, any>) => {
     let count = 0;
     for (const [, value] of Object.entries<any>(holder)) {
-      count += value.price * value.quantity;
+      count += Number(value.price || 0) * Number(value.quantity || 0);
     }
     setTotal(count);
     setCards(Object.entries(holder));
+  };
+
+  const applyValidationUpdates = (
+    holder: Record<string, any>,
+    updates: CartValidationUpdate[]
+  ) => {
+    let hasChanges = false;
+
+    for (const update of updates) {
+      if (!holder[update.cartKey]) {
+        continue;
+      }
+
+      if (update.action === "remove") {
+        delete holder[update.cartKey];
+        hasChanges = true;
+        continue;
+      }
+
+      const currentItem = holder[update.cartKey];
+      const nextQuantity =
+        typeof update.quantity === "number" && update.quantity > 0
+          ? update.quantity
+          : currentItem.quantity;
+      const nextPrice = update.price ?? currentItem.price;
+      const nextPriceId = update.priceID ?? currentItem.priceID;
+      const nextChosenOptionPriceId =
+        update.chosenOptionPriceID !== undefined
+          ? update.chosenOptionPriceID
+          : currentItem.chosenOptionPriceID;
+      const nextChosenColors =
+        update.chosenColors !== undefined
+          ? update.chosenColors
+          : currentItem.chosenColors;
+
+      if (
+        currentItem.quantity !== nextQuantity ||
+        currentItem.price !== nextPrice ||
+        currentItem.priceID !== nextPriceId ||
+        currentItem.chosenOptionPriceID !== nextChosenOptionPriceId ||
+        JSON.stringify(currentItem.chosenColors ?? null) !==
+          JSON.stringify(nextChosenColors ?? null)
+      ) {
+        holder[update.cartKey] = {
+          ...currentItem,
+          quantity: nextQuantity,
+          price: nextPrice,
+          priceID: nextPriceId,
+          chosenOptionPriceID: nextChosenOptionPriceId,
+          chosenColors: nextChosenColors,
+        };
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      localStorage.setItem("Cart", JSON.stringify(holder));
+    }
+
+    return hasChanges;
+  };
+
+  const buildCheckoutDetails = (holder: Record<string, any>) => {
+    const details: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries<any>(holder)) {
+      const usePriceID = value.chosenOptionPriceID ?? value.priceID;
+      details[key] = {
+        product: {
+          name: value.name,
+          price: usePriceID,
+          quantity: value.quantity,
+        },
+        stocktrack: { id: value.id, currpage: value.currpage },
+        chosenOption: value.chosenOption || "",
+        chosenOptions: value.chosenOptions || {},
+      };
+
+      if (value.chosenColors) {
+        details[key].chosenColors = value.chosenColors;
+      }
+
+      if (value.chosenColors) {
+        if (Array.isArray(value.chosenColors)) {
+          const combos = value.chosenColors.map((combo: CartColorMap, i: number) => {
+            const comboList = Object.entries(combo)
+              .map(([c, q]) => `${c} (${q})`)
+              .join(", ");
+            return `Set ${i + 1}: ${comboList}`;
+          });
+          details[key].product.colors = combos.join("; ");
+        } else {
+          const arr = Object.entries(value.chosenColors as CartColorMap).map(
+            ([c, q]) => `${c} (${q})`
+          );
+          details[key].product.colors = arr.join(", ");
+        }
+      }
+    }
+
+    return details;
+  };
+
+  const validateCart = async (holder: Record<string, any>) => {
+    if (Object.keys(holder).length === 0) {
+      return true;
+    }
+
+    setIsValidatingCart(true);
+
+    try {
+      const response = await fetch("/api/checkout_sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          details: buildCheckoutDetails(holder),
+          validateOnly: true,
+        }),
+      });
+
+      const payload = await response.json();
+      const updates = Array.isArray(payload.updates)
+        ? (payload.updates as CartValidationUpdate[])
+        : [];
+      const hasChanges = applyValidationUpdates(holder, updates);
+      syncCartState(holder);
+
+      if (!response.ok) {
+        if (hasChanges) {
+          return false;
+        }
+        if (Array.isArray(payload.issues) && payload.issues.length > 0) {
+          alert(payload.issues.join("\n"));
+        }
+        return false;
+      }
+
+      return !hasChanges;
+    } catch (error) {
+      console.error(error);
+      return false;
+    } finally {
+      setIsValidatingCart(false);
+    }
+  };
+
+  useEffect(() => {
+    const rawCart = localStorage.getItem("Cart");
+    if (!rawCart) {
+      syncCartState({});
+      return;
+    }
+
+    const holder = JSON.parse(rawCart);
+    syncCartState(holder);
+    void validateCart(holder);
   }, []);
 
   const redirectToCheckout = async () => {
     try {
-      const stripe = await loadStripe(
-        "pk_live_51PQlcqRsYE4iOwmAYRRGhtl24Vnvc9mkZ37LB5PlJl8XcHVbTf0B0T3h7Ey7y28URqdIITb48aM9jjZ7wjuCPKKb00utiqhUVv"
-      );
-
       const holder = JSON.parse(localStorage.getItem("Cart") || "{}");
-      const details: Record<string, any> = {};
 
-      for (const [key, value] of Object.entries<any>(holder)) {
-        const usePriceID = value.chosenOptionPriceID ?? value.priceID;
-        details[key] = {
-          product: {
-            name: value.name,
-            price: usePriceID,
-            quantity: value.quantity,
-          },
-          stocktrack: { id: value.id, currpage: value.currpage },
-          chosenOption: value.chosenOption || "",
-        };
-
-        // Format chosen colors into readable text for checkout
-        if (value.chosenColors) {
-          if (Array.isArray(value.chosenColors)) {
-            const combos = value.chosenColors.map((combo, i) => {
-              const comboList = Object.entries(combo)
-                .map(([c, q]) => `${c} (${q})`)
-                .join(", ");
-              return `Set ${i + 1}: ${comboList}`;
-            });
-            details[key].product.colors = combos.join("; ");
-          } else {
-            const arr = Object.entries(value.chosenColors).map(
-              ([c, q]) => `${c} (${q})`
-            );
-            details[key].product.colors = arr.join(", ");
-          }
-        }
+      const isCartValid = await validateCart(holder);
+      if (!isCartValid) {
+        return;
       }
 
       const checkoutResponse = await fetch("/api/checkout_sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ details }),
+        body: JSON.stringify({ details: buildCheckoutDetails(holder) }),
       });
 
       const ses = await checkoutResponse.json();
-      if (ses.error === "At least one item isn't in stock!") {
-        alert(ses.error);
+      if (!checkoutResponse.ok) {
+        const message = Array.isArray(ses.issues) && ses.issues.length > 0
+          ? ses.issues.join("\n")
+          : ses.error || "Unable to validate your cart.";
+        alert(message);
         return;
       }
-
       router.push(`/checkout`);
     } catch (error) {
       console.error(error);
@@ -148,8 +293,9 @@ export default function CartDetails() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={redirectToCheckout}
+                  disabled={isValidatingCart}
                   className="w-full bg-[#6d229b] text-white py-3 px-4 rounded-md font-bold 
-                    transition duration-200 hover:bg-[#55197a] cursor-pointer"
+                    transition duration-200 hover:bg-[#55197a] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   CHECKOUT
                 </button>
@@ -171,13 +317,13 @@ export default function CartDetails() {
 // -----------------------------------------------------------------------------
 // CartCard
 // -----------------------------------------------------------------------------
-function CartCard({ cartKey, index, name, price, quantity, image, colors, chosenOption }) {
+function CartCard({ cartKey, index, name, price, quantity, image, colors, chosenOption }: CartCardProps) {
   const [itemPrice, setItemPrice] = useState(price);
 
   const hasColorsArray = Array.isArray(colors);
   const hasColorsObject =
     colors && typeof colors === "object" && !Array.isArray(colors);
-  const colorSets = hasColorsArray ? colors : hasColorsObject ? [colors] : [];
+  const colorSets: CartColorMap[] = hasColorsArray ? colors : hasColorsObject ? [colors] : [];
 
   useEffect(() => {
     if (colorSets.length > 0) recalcOverallQuantity();
@@ -250,8 +396,8 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
       if (existing?.chosenOption) {
         const nonColorParts = existing.chosenOption
           .split(";")
-          .map((s) => s.trim())
-          .filter((s) => !s.toLowerCase().startsWith("colour"));
+          .map((s: string) => s.trim())
+          .filter((s: string) => !s.toLowerCase().startsWith("colour"));
         optionSummaryParts.push(...nonColorParts);
       }
 
@@ -293,12 +439,12 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
       if (existing?.chosenOption) {
         const nonColorParts = existing.chosenOption
           .split(";")
-          .map((s) => s.trim())
-          .filter((s) => !s.toLowerCase().startsWith("colour"));
+          .map((s: string) => s.trim())
+          .filter((s: string) => !s.toLowerCase().startsWith("colour"));
         optionSummaryParts.push(...nonColorParts);
       }
 
-      colorArray.forEach((combo) => {
+      colorArray.forEach((combo: CartColorMap) => {
         Object.keys(combo).forEach((label) => optionSummaryParts.push(label));
       });
 
@@ -310,7 +456,8 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
   };
 
 
-  const itemTotal = price * quantity;
+  const numericPrice = Number(price);
+  const itemTotal = numericPrice * quantity;
 
   // --- Desktop Layout ---
   return (
@@ -343,7 +490,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
         </div>
 
         <div className="col-span-2 text-white text-center">
-          ${parseFloat(price).toFixed(2)}
+          ${numericPrice.toFixed(2)}
         </div>
 
         <div className="col-span-2 flex justify-center">
@@ -361,7 +508,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
         </div>
 
         <div className="col-span-2 text-white text-right font-medium">
-          ${parseFloat(itemTotal).toFixed(2)}
+          ${itemTotal.toFixed(2)}
         </div>
       </div>
 
@@ -380,7 +527,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
         </div>
 
         <div className="flex justify-between items-center">
-          <div className="text-white font-medium">${parseFloat(price).toFixed(2)}</div>
+          <div className="text-white font-medium">${numericPrice.toFixed(2)}</div>
           <input
             type="number"
             min={1}
@@ -415,7 +562,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
         <div className="px-4 pb-4">
           <div className="pl-4 md:pl-20 border-l-2 border-gray-700">
             <div className="text-white font-medium text-sm mb-2">Colour Options:</div>
-            {colorSets.map((colorMap, setIndex) => {
+            {colorSets.map((colorMap: CartColorMap, setIndex) => {
               const entries = Object.entries(colorMap);
               const isCombination = entries.length > 1;
               return (
@@ -462,7 +609,7 @@ function CartCard({ cartKey, index, name, price, quantity, image, colors, chosen
                             type="number"
                             min={0}
                             step={1}
-                            defaultValue={colQty}
+                            defaultValue={Number(colQty)}
                             className="w-16 text-center bg-gray-800 text-white rounded border border-gray-700 py-1 text-sm"
                             onBlur={(e) => handleColorChange(setIndex, colorName, e.target.value)}
                           />

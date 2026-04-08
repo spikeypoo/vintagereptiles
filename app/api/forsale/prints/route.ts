@@ -2,6 +2,7 @@ import connect from "@/app/utils/startMongo";
 import { S3Client, ListObjectsCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'bson';
+import { mongoDbName } from "@/app/lib/db-server";
 import { prisma } from "@/app/lib/prisma";
 import stripe from "@/app/lib/stripe";
 
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
 
   // 4) Connect + insert into MongoDB first
   const client = await connect;
-  const result = await client.db("Products").collection("Prints").insertOne(doc);
+  const result = await client.db(mongoDbName).collection("Prints").insertOne(doc);
 
   // 5) Create Stripe product + price
   if (doc.price && doc.price !== "") {
@@ -141,7 +142,7 @@ export async function POST(request: Request) {
     });
 
     // Update MongoDB document with stripeid and priceid
-    await client.db("Products").collection("Prints").updateOne(
+    await client.db(mongoDbName).collection("Prints").updateOne(
       { _id: result.insertedId },
       { $set: { stripeid: stripeProduct.id, priceid: stripePrice.id, customOptions: pricedOptions} }
     );
@@ -192,14 +193,14 @@ export async function PUT(request: Request) {
 
   // 4) Update DB
   const client = await connect;
-  await client.db("Products").collection("Prints").findOneAndUpdate(
+  await client.db(mongoDbName).collection("Prints").findOneAndUpdate(
     { _id: new ObjectId(id) },
     { $set: updateDoc }
   );
 
   // 5) Possibly handle Stripe logic
   //    We'll find the updated doc so we can get the first image for Stripe
-  const isExist = await client.db("Products").collection("Prints").findOne({ _id: new ObjectId(id) });
+  const isExist = await client.db(mongoDbName).collection("Prints").findOne({ _id: new ObjectId(id) });
   if (!isExist) {
     return Response.json({ message: "document not found" });
   }
@@ -216,7 +217,7 @@ export async function PUT(request: Request) {
       shippable: true,
     });
 
-    await client.db("Products").collection("Prints").findOneAndUpdate(
+    await client.db(mongoDbName).collection("Prints").findOneAndUpdate(
       { _id: new ObjectId(id) },
       { $set: { stripeid: res.id } }
     );
@@ -227,7 +228,7 @@ export async function PUT(request: Request) {
       product: res.id,
     });
 
-    await client.db("Products").collection("Prints").findOneAndUpdate(
+    await client.db(mongoDbName).collection("Prints").findOneAndUpdate(
       { _id: new ObjectId(id) },
       { $set: { priceid: price.id } }
     );
@@ -282,12 +283,12 @@ export async function PUT(request: Request) {
     );
   
     // 5) Overwrite mongo’s customOptions with the new price‐ID’d list
-    await client.db("Products").collection("Prints").updateOne(
+    await client.db(mongoDbName).collection("Prints").updateOne(
       { _id: new ObjectId(id) },
       { $set: { customOptions: newPricedOptions } }
     );
 
-    await client.db("Products").collection("Prints").findOneAndUpdate(
+    await client.db(mongoDbName).collection("Prints").findOneAndUpdate(
       { _id: new ObjectId(id) },
       { $set: { priceid: price.id } }
     );
@@ -301,7 +302,7 @@ export async function DELETE(request: Request) {
   const form = await request.formData();
   const id = form.get("id") as string;
   
-  await client.db("Products").collection("Prints").findOneAndDelete({
+  await client.db(mongoDbName).collection("Prints").findOneAndDelete({
     _id: new ObjectId(id),
   });
 
