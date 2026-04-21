@@ -29,6 +29,7 @@ type AdminCustomOption = {
   label?: string;
   price?: string;
   priceid?: string;
+  stock?: string;
   imageIndex?: number;
   isColourOption?: boolean;
   colourIds?: string[];
@@ -61,6 +62,7 @@ type CustomOptionChoiceForm = {
   id: string;
   label: string;
   price: string;
+  stock: string;
   imageIndex: number | "";
 };
 
@@ -126,6 +128,7 @@ function inflateCustomOptionsToGroups(options?: AdminCustomOption[]): CustomOpti
         id: opt?.id || generateId(),
         label: opt?.label ?? "",
         price: opt?.price ?? "",
+        stock: opt?.stock ?? "",
         imageIndex:
           typeof opt?.imageIndex === "number" && !Number.isNaN(opt.imageIndex)
             ? opt.imageIndex
@@ -145,6 +148,7 @@ function inflateCustomOptionsToGroups(options?: AdminCustomOption[]): CustomOpti
               id: generateId(),
               label: "",
               price: "",
+              stock: "",
               imageIndex: "",
             },
           ],
@@ -173,6 +177,7 @@ function flattenCustomOptionGroups(
           id: opt.id,
           label,
           price: priceValue || undefined,
+          stock: opt.stock.trim() || undefined,
           imageIndex:
             opt.imageIndex === "" || Number.isNaN(Number(opt.imageIndex))
               ? undefined
@@ -1623,6 +1628,7 @@ function CustomOptionGroupsEditor({
                   id: generateId(),
                   label: "",
                   price: "",
+                  stock: "",
                   imageIndex: "" as const,
                 },
               ],
@@ -1678,6 +1684,7 @@ function CustomOptionGroupsEditor({
                   id: generateId(),
                   label: "",
                   price: "",
+                  stock: "",
                   imageIndex: "" as const,
                 },
               ],
@@ -1718,6 +1725,7 @@ function CustomOptionGroupsEditor({
                 id: generateId(),
                 label: "",
                 price: "",
+                stock: "",
                 imageIndex: "" as const,
               },
             ],
@@ -1729,7 +1737,12 @@ function CustomOptionGroupsEditor({
   );
 
   const updateChoiceField = useCallback(
-    (groupId: string, choiceId: string, field: "label" | "price" | "imageIndex", value: string) => {
+    (
+      groupId: string,
+      choiceId: string,
+      field: "label" | "price" | "stock" | "imageIndex",
+      value: string
+    ) => {
       onChange((prev) =>
         prev.map((group) => {
           if (group.id !== groupId || group.type !== "standard") {
@@ -1746,6 +1759,9 @@ function CustomOptionGroupsEditor({
               }
               if (field === "price") {
                 return { ...choice, price: value };
+              }
+              if (field === "stock") {
+                return { ...choice, stock: value };
               }
               return {
                 ...choice,
@@ -1777,6 +1793,7 @@ function CustomOptionGroupsEditor({
                       id: generateId(),
                       label: "",
                       price: "",
+                      stock: "",
                       imageIndex: "" as const,
                     },
                   ],
@@ -1960,6 +1977,15 @@ function CustomOptionGroupsEditor({
                           className="w-full rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5 pl-6"
                         />
                       </div>
+                      <input
+                        type="text"
+                        value={option.stock}
+                        onChange={(event) =>
+                          updateChoiceField(group.id, option.id, "stock", event.target.value)
+                        }
+                        placeholder="Stock"
+                        className="w-full md:w-28 rounded-md bg-gray-700 text-gray-200 border border-gray-600 p-2.5"
+                      />
                       <button
                         type="button"
                         onClick={() => removeChoiceFromGroup(group.id, option.id)}

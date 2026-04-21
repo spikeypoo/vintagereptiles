@@ -6,6 +6,28 @@ import { mongoDbName } from "@/app/lib/db-server";
 import { prisma } from "@/app/lib/prisma";
 import stripe from "@/app/lib/stripe";
 
+type IncomingCustomOption = {
+  label?: string;
+  price?: string;
+  stock?: string;
+  imageIndex?: number | null;
+  groupName?: string;
+};
+
+function mapOptionWithPrice(opt: IncomingCustomOption, priceId: string) {
+  return {
+    label: typeof opt?.label === "string" ? opt.label : "",
+    imageIndex:
+      typeof opt?.imageIndex === "number" && !Number.isNaN(opt.imageIndex)
+        ? opt.imageIndex
+        : null,
+    price: typeof opt?.price === "string" ? opt.price : "",
+    stock: typeof opt?.stock === "string" ? opt.stock : "",
+    groupName: typeof opt?.groupName === "string" ? opt.groupName : undefined,
+    priceid: priceId,
+  };
+}
+
 export async function GET() {
   const time = Date.now();
   
@@ -45,7 +67,7 @@ export async function POST(request: Request) {
   }
 
   // Parse customOptions
-  let customOptions = [];
+  let customOptions: IncomingCustomOption[] = [];
   const optsJson = form.get("customOptions");
   if (optsJson) {
     try { customOptions = JSON.parse(optsJson.toString()); }
@@ -79,7 +101,7 @@ export async function POST(request: Request) {
     });
 
     const pricedOptions = await Promise.all(
-      customOptions.map(async opt => {
+      customOptions.map(async (opt: IncomingCustomOption) => {
         // parse user‐entered price
         const cents = Math.round(Number(opt.price) * 100);
         const p = await stripe.prices.create({
@@ -87,12 +109,7 @@ export async function POST(request: Request) {
           unit_amount: cents,
           product:     stripeProduct.id,
         });
-        return {
-          label:      opt.label,
-          imageIndex: opt.imageIndex,
-          price: opt.price,
-          priceid:    p.id,     // <-- store the Stripe Price ID
-        };
+        return mapOptionWithPrice(opt, p.id);
       })
     );
 
@@ -135,7 +152,7 @@ export async function PUT(request: Request) {
   }
 
   // Parse customOptions
-  let customOptions = [];
+  let customOptions: IncomingCustomOption[] = [];
   const optsJson = form.get("customOptions");
   if (optsJson) {
     try { customOptions = JSON.parse(optsJson.toString()); }
@@ -222,19 +239,14 @@ export async function PUT(request: Request) {
     }
 
     const newPricedOptions = await Promise.all(
-      customOptions.map(async opt => {
+      customOptions.map(async (opt: IncomingCustomOption) => {
         const cents = Math.round(Number(opt.price) * 100);
         const p = await stripe.prices.create({
           currency:    "cad",
           unit_amount: cents,
           product:     isExist.stripeid,
         });
-        return {
-          label:      opt.label,
-          imageIndex: opt.imageIndex,
-          price: opt.price,
-          priceid:    p.id,
-        };
+        return mapOptionWithPrice(opt, p.id);
       })
     );
   

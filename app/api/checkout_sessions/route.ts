@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 import stripe from "@/app/lib/stripe";
 import { mongoDbName } from "@/app/lib/db-server";
 import { ObjectId } from "bson";
+import { getSelectedOptionAvailability } from "@/app/lib/product-options";
 
 type CartLineProduct = {
   name?: string;
@@ -28,8 +29,22 @@ type ValidatedCartEntry = {
   cartKey: string;
   product: CartLineProduct;
   chosenOption?: string;
+  chosenOptions?: Record<string, string>;
   chosenColors?: unknown;
   category?: string;
+  collectionName: string;
+  listingId: string;
+};
+
+type CheckoutStockReservation = {
+  sessionId: string;
+  items: {
+    collectionName: string;
+    listingId: string;
+    quantity: number;
+    chosenOptions?: Record<string, string>;
+  }[];
+  createdAt: Date;
 };
 
 type CartValidationUpdate = {
@@ -358,11 +373,25 @@ export async function POST(req: NextRequest) {
         currentRecord,
         chosenOptions
       );
-      const currentStock = Number.parseInt(String(currentRecord.stock || "0"), 10) || 0;
+      const selectedOptionAvailability = getSelectedOptionAvailability(
+        currentRecord.customOptions,
+        chosenOptions,
+        currentRecord.stock
+      );
+      const currentStock = selectedOptionAvailability.stock;
       const requestedQty = Number(product.quantity || 1);
       let normalizedChosenColors = chosenColors;
       let normalizedQty = requestedQty;
       let needsCartUpdate = false;
+
+      if (
+        selectedOptionAvailability.usesOptionStock &&
+        selectedOptionAvailability.missingSelections.length > 0
+      ) {
+        validationIssues.push(`"${currentRecord.name || product.name}" could not be validated.`);
+        cartUpdates.push({ cartKey, action: "remove" });
+        return null;
+      }
 
       if (currentStock <= 0) {
         validationIssues.push(`"${currentRecord.name || product.name}" is out of stock.`);
@@ -437,8 +466,11 @@ export async function POST(req: NextRequest) {
         cartKey,
         product,
         chosenOption,
+        chosenOptions,
         chosenColors,
         category: formatCategoryLabel(stocktrack?.currpage),
+        collectionName,
+        listingId: stocktrack.id,
       };
     })
   );
@@ -580,6 +612,26 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    const reservation: CheckoutStockReservation = {
+      sessionId: session.id,
+      items: nonNullValidatedEntries.map((entry) => ({
+        collectionName: entry.collectionName,
+        listingId: entry.listingId,
+        quantity: Number(entry.product.quantity || 1),
+        chosenOptions: entry.chosenOptions,
+      })),
+      createdAt: new Date(),
+    };
+
+    await client
+      .db(mongoDbName)
+      .collection<CheckoutStockReservation>("CheckoutStockReservations")
+      .updateOne(
+        { sessionId: session.id },
+        { $set: reservation },
+        { upsert: true }
+      );
 
     return NextResponse.json({ 
       clientSecret: session.client_secret,

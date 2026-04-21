@@ -5,14 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Filter, Search } from 'lucide-react';
+import { getListingAvailability } from '@/app/lib/product-options';
 
 type CustomOption = {
   label?: string;
   price?: string;
   priceid?: string;
+  stock?: string;
   imageIndex?: number;
   isColourOption?: boolean;
   colourIds?: string[];
+  groupName?: string;
 };
 
 export type ShopPageProduct = {
@@ -96,7 +99,7 @@ export default function ShopPageClient({ pages, initialCards }: ShopPageClientPr
     });
 
     if (showInStock) {
-      results = results.filter((card) => parseInt(card.stock, 10) > 0);
+      results = results.filter((card) => getListingAvailability(card.customOptions, card.stock).inStock);
     }
 
     if (showOnSale) {
@@ -403,7 +406,7 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const [hovering, setHovering] = useState(false);
   const toListing = `/shop/${pages}/${pages}-${id}`;
-  const isOutOfStock = parseInt(stock, 10) <= 0;
+  const isOutOfStock = !getListingAvailability(customOptions, stock).inStock;
   const standardOptions = Array.isArray(customOptions)
     ? customOptions.filter((opt) => !opt?.isColourOption)
     : [];

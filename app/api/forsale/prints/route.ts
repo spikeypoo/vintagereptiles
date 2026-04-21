@@ -9,6 +9,7 @@ import stripe from "@/app/lib/stripe";
 type IncomingCustomOption = {
   label?: string;
   price?: string;
+  stock?: string;
   imageIndex?: number | null;
   isColourOption?: boolean;
   colourIds?: string[];
@@ -31,6 +32,7 @@ function mapOptionWithPrice(opt: IncomingCustomOption, priceId: string) {
   return {
     label,
     price,
+    stock: typeof opt?.stock === "string" ? opt.stock : "",
     imageIndex,
     priceid: priceId,
     isColourOption,

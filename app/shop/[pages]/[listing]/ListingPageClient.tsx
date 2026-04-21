@@ -5,11 +5,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronDown, ChevronLeft, ChevronRight, ShoppingCart, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  getListingAvailability,
+  getOptionStock,
+  getSelectedOptionAvailability,
+  getStandardOptionGroups,
+  parseStockCount,
+} from '@/app/lib/product-options';
 
 type CustomOption = {
   label?: string;
   price?: string;
   priceid?: string;
+  stock?: string;
   imageIndex?: number;
   isColourOption?: boolean;
   colourIds?: string[];
@@ -86,22 +94,7 @@ export default function ListingPageClient({ page, listingId, initialData, produc
   }, [focused, images]);
 
   const standardOptionGroups = useMemo(() => {
-    if (!Array.isArray(listingData.customOptions)) {
-      return [] as { title: string; options: CustomOption[] }[];
-    }
-    const order: string[] = [];
-    const map = new Map<string, { title: string; options: CustomOption[] }>();
-    listingData.customOptions.forEach((opt) => {
-      if (opt?.isColourOption) return;
-      const title = opt?.groupName || opt?.label || 'Option';
-      const key = `standard:${title}`;
-      if (!map.has(key)) {
-        order.push(key);
-        map.set(key, { title, options: [] });
-      }
-      map.get(key)!.options.push(opt);
-    });
-    return order.map((key) => map.get(key)!);
+    return getStandardOptionGroups(listingData.customOptions);
   }, [listingData.customOptions]);
 
   const colourOptionGroups = useMemo(() => {
@@ -147,10 +140,48 @@ export default function ListingPageClient({ page, listingId, initialData, produc
   const hasColourOptions = colourOptionGroups.length > 0;
   const allStandardSelected = standardOptionGroups.every((group) => selectedStandardOptions[group.title]);
   const allColourSelected = colourOptionGroups.every((group) => selectedColourSelections[group.title]);
+  const selectedStandardOptionLabels = useMemo(
+    () =>
+      standardOptionGroups.reduce<Record<string, string>>((acc, group) => {
+        const selected = selectedStandardOptions[group.title];
+        if (selected?.label) {
+          acc[group.title] = selected.label;
+        }
+        return acc;
+      }, {}),
+    [selectedStandardOptions, standardOptionGroups]
+  );
+  const listingAvailability = useMemo(
+    () => getListingAvailability(listingData.customOptions, listingData.stock),
+    [listingData.customOptions, listingData.stock]
+  );
+  const selectedOptionAvailability = useMemo(
+    () =>
+      getSelectedOptionAvailability(
+        listingData.customOptions,
+        selectedStandardOptionLabels,
+        listingData.stock
+      ),
+    [listingData.customOptions, listingData.stock, selectedStandardOptionLabels]
+  );
   const totalStandardOptions = standardOptionGroups.reduce(
     (sum, group) => sum + group.options.length,
     0
   );
+  const fallbackStock = parseStockCount(listingData.stock, 0);
+  const currentAvailableStock =
+    hasStandardOptions && allStandardSelected
+      ? selectedOptionAvailability.stock
+      : fallbackStock;
+  const isSelectedStandardOptionOutOfStock =
+    hasStandardOptions && allStandardSelected && selectedOptionAvailability.stock <= 0;
+  const isOutOfStock = hasStandardOptions
+    ? allStandardSelected
+      ? isSelectedStandardOptionOutOfStock
+      : !listingAvailability.inStock
+    : fallbackStock <= 0;
+  const inStock = !isOutOfStock;
+  const quantityCap = currentAvailableStock > 0 ? currentAvailableStock : 1;
 
   useEffect(() => {
     setSelectedStandardOptions((prev) => {
@@ -208,6 +239,17 @@ export default function ListingPageClient({ page, listingId, initialData, produc
       };
     }
   }, [openStandardDropdown, openColourDropdown]);
+
+  useEffect(() => {
+    setQuantity((prev) => {
+      const numeric =
+        typeof prev === 'number' ? prev : Number.parseInt(prev || '1', 10) || 1;
+      if (currentAvailableStock <= 0) {
+        return 1;
+      }
+      return Math.min(numeric, currentAvailableStock);
+    });
+  }, [currentAvailableStock]);
 
   const getMinOptionPrice = () => {
     const basePrice = Number.parseFloat(listingData.price || '0');
@@ -281,9 +323,24 @@ export default function ListingPageClient({ page, listingId, initialData, produc
     return 0;
   };
 
-  const isOutOfStock = Number.parseInt(listingData.stock || '0', 10) <= 0;
-  const inStock = Number.parseInt(listingData.stock || '0', 10) > 0;
   const discount = calculateDiscount();
+  const stockStatusText = (() => {
+    if (!hasStandardOptions) {
+      return inStock ? `In Stock (${fallbackStock} available)` : 'Out of Stock';
+    }
+
+    if (!listingAvailability.inStock) {
+      return 'Out of Stock';
+    }
+
+    if (!allStandardSelected) {
+      return 'Select options to view stock';
+    }
+
+    return selectedOptionAvailability.stock > 0
+      ? `In Stock (${selectedOptionAvailability.stock} available for this selection)`
+      : 'Selected option is out of stock';
+  })();
 
   const handleAdd = () => {
     setAddingToCart(true);
@@ -306,6 +363,16 @@ export default function ListingPageClient({ page, listingId, initialData, produc
 
     const numQuantity =
       typeof quantity === 'number' ? quantity : Number.parseInt(quantity || '1', 10) || 1;
+
+    if (numQuantity > currentAvailableStock) {
+      setAddingToCart(false);
+      alert(
+        currentAvailableStock > 0
+          ? `Only ${currentAvailableStock} available for the selected option.`
+          : 'The selected option is out of stock.'
+      );
+      return;
+    }
 
     const priceOption = Object.values(selectedStandardOptions).find((opt) => opt?.price);
     const rawPrice = priceOption?.price ?? listingData.price ?? '0';
@@ -532,7 +599,7 @@ export default function ListingPageClient({ page, listingId, initialData, produc
               <div className="flex items-center">
                 <div className={`w-3 h-3 rounded-full ${inStock ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span className="ml-2 text-sm text-gray-300">
-                  {inStock ? `In Stock (${listingData.stock} available)` : 'Out of Stock'}
+                  {stockStatusText}
                 </span>
               </div>
             </div>
@@ -574,20 +641,30 @@ export default function ListingPageClient({ page, listingId, initialData, produc
                   </button>
                   {openStandardDropdown === group.title && (
                     <div className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-[#3a3839] bg-[#1c1a1b] shadow-lg">
-                      {group.options.map((option) => (
-                        <button
-                          key={`${group.title}-${option.label}`}
-                          type="button"
-                          onClick={() => handleStandardOptionSelect(group.title, option)}
-                          className={`flex w-full items-center justify-between px-4 py-2 text-sm transition hover:bg-[#2c2a2b] ${selected?.label === option.label ? 'bg-[#341233] text-[#cb18db]' : 'text-gray-200'
-                            }`}
-                        >
-                          <span>{option.label || 'Untitled option'}</span>
-                          {option.price && (
-                            <span className="text-xs text-gray-400">${Number.parseFloat(option.price).toFixed(2)}</span>
-                          )}
-                        </button>
-                      ))}
+                      {group.options.map((option) => {
+                        const optionStock = getOptionStock(option, listingData.stock);
+                        const optionOutOfStock = optionStock <= 0;
+
+                        return (
+                          <button
+                            key={`${group.title}-${option.label}`}
+                            type="button"
+                            onClick={() => handleStandardOptionSelect(group.title, option)}
+                            className={`flex w-full items-center justify-between px-4 py-2 text-sm transition hover:bg-[#2c2a2b] ${selected?.label === option.label ? 'bg-[#341233] text-[#cb18db]' : 'text-gray-200'
+                              } ${optionOutOfStock ? 'opacity-70' : ''}`}
+                          >
+                            <span>
+                              {option.label || 'Untitled option'}
+                              {optionOutOfStock ? ' (Out of stock)' : ''}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {option.price ? `$${Number.parseFloat(option.price).toFixed(2)}` : ''}
+                              {option.price ? ' • ' : ''}
+                              {optionOutOfStock ? '0 left' : `${optionStock} left`}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   {!selected && (
@@ -671,7 +748,7 @@ export default function ListingPageClient({ page, listingId, initialData, produc
                     }
                     const numVal = Number.parseInt(val, 10);
                     if (!Number.isNaN(numVal) && numVal > 0) {
-                      const stock = Number.parseInt(listingData.stock || '0', 10) || 999;
+                      const stock = quantityCap;
                       setQuantity(Math.min(numVal, stock));
                     }
                   }}
@@ -682,7 +759,7 @@ export default function ListingPageClient({ page, listingId, initialData, produc
                     }
                   }}
                   min={1}
-                  max={listingData.stock || undefined}
+                  max={currentAvailableStock > 0 ? currentAvailableStock : 1}
                 />
                 <button
                   type="button"
@@ -690,7 +767,7 @@ export default function ListingPageClient({ page, listingId, initialData, produc
                   onClick={() =>
                     setQuantity((prev) => {
                       const currentQty = typeof prev === 'number' ? prev : Number.parseInt(prev || '0', 10) || 0;
-                      const stock = Number.parseInt(listingData.stock || '0', 10) || 999;
+                      const stock = quantityCap;
                       return Math.min(stock, currentQty + 1);
                     })
                   }
@@ -699,9 +776,13 @@ export default function ListingPageClient({ page, listingId, initialData, produc
                   +
                 </button>
               </div>
-              {Number(quantity) > (Number.parseInt(listingData.stock || '0', 10) || 0) && (
+              {currentAvailableStock <= 0 && allStandardSelected ? (
                 <p className="text-sm text-red-500 mt-1">
-                  Only {listingData.stock} available in stock
+                  This selection is out of stock
+                </p>
+              ) : Number(quantity) > currentAvailableStock && (
+                <p className="text-sm text-red-500 mt-1">
+                  Only {currentAvailableStock} available for this selection
                 </p>
               )}
             </div>
