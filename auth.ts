@@ -1,10 +1,9 @@
-// auth.ts
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import authConfig from "@/auth.config";
 
-export const authOptions = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
     GoogleProvider({
@@ -26,4 +25,4 @@ export const authOptions = {
       },
     }),
   ],
-};
+});
